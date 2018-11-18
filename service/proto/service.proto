@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+import "model/proto/task.proto";
+import "model/proto/runner.proto";
+
+package taask.server.service;
+option go_package = "service";
+
+service TaskService {
+	rpc Queue (taask.server.model.Task) returns (taask.server.model.QueueTaskResponse);
+	rpc CheckTask(taask.server.model.CheckTaskRequest) returns (stream taask.server.model.CheckTaskResponse);
+}
+
+service RunnerService {
+	rpc RegisterRunner(taask.server.model.RegisterRunnerRequest) returns (taask.server.model.RegisterRunnerResponse);
+	rpc StreamTasks(taask.server.model.StreamTasksRequest) returns (stream taask.server.model.Task);
+}

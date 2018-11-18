@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+import "crypto/proto/message.proto";
+import "crypto/proto/keypair.proto";
+
+package taask.server.model;
+option go_package = "model";
+
+message Task {
+	string UUID = 1;
+	string Type = 2;
+	taask.server.crypto.serializablePubKey PubKey = 3;
+	bytes Body = 4;
+}
+
+message TaskResult {
+	string UUID = 1;
+	taask.server.crypto.Message EncResponse = 2;
+	taask.server.crypto.Message EncResponseSymKey = 3;
+}
+
+message QueueTaskResponse {
+	string UUID = 1;
+}
+
+message CheckTaskRequest {
+	string UUID = 1;
+}
+
+message CheckTaskResponse {
+	bool completed = 1;
+	int32 progress = 2;
+	TaskResult result = 3;
+}

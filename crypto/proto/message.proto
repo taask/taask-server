@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package taask.server.crypto;
+option go_package = "crypto";
+
+message Message {
+	bytes Data = 1;
+	string KeyType = 2;
+	string KID = 3;
+	string IV = 4;
+}
+
+message Signature {
+	bytes Signature = 1;
+	string KID = 2;
+}

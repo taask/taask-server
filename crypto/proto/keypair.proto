@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package taask.server.crypto;
+option go_package = "crypto";
+
+message serializablePubKey {
+	string N = 1;
+	int64 E = 2;
+	string KID = 3;
+}
