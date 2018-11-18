@@ -3,7 +3,7 @@ syntax = "proto3";
 import "crypto/proto/message.proto";
 
 package taask.server.model;
-option go_package = "model";
+option go_package = "github.com/taask/taask-server/model";
 
 message RegisterRunnerRequest {
 	string UUID = 1;

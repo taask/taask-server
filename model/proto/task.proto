@@ -4,7 +4,7 @@ import "crypto/proto/message.proto";
 import "crypto/proto/keypair.proto";
 
 package taask.server.model;
-option go_package = "model";
+option go_package = "github.com/taask/taask-server/model";
 
 message Task {
 	string UUID = 1;
