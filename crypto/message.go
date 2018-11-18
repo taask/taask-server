@@ -23,12 +23,6 @@ func MessageFromJSON(src []byte) (*Message, error) {
 	return m, nil
 }
 
-// Signature represents a digital signature
-type Signature struct {
-	Signature []byte `json:"signature"`
-	KID       string `json:"kid"`
-}
-
 // ToJSON serializes a signature to JSON
 func (s *Signature) ToJSON() ([]byte, error) {
 	return json.Marshal(s)
