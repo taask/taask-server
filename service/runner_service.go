@@ -1,20 +1,43 @@
 package service
 
 import (
-	proto1 "model/proto"
+	"log"
+	"net"
 
+	"github.com/taask/taask-server/model"
 	context "golang.org/x/net/context"
+	"google.golang.org/grpc"
 )
+
+const runnerServicePort = ":3687"
+
+// StartRunnerService starts the runner service
+func StartRunnerService(errChan chan error) {
+	lis, err := net.Listen("tcp", runnerServicePort)
+	if err != nil {
+		errChan <- err
+		return
+	}
+
+	grpcServer := grpc.NewServer()
+
+	RegisterRunnerServiceServer(grpcServer, RunnerService{})
+
+	log.Println("starting taask-server runner service on :3687")
+	if err := grpcServer.Serve(lis); err != nil {
+		errChan <- err
+	}
+}
 
 // RunnerService describes the service available to taask runners
 type RunnerService struct{}
 
 // RegisterRunner allows a runner to advertise itself and perform auth with the server
-func (rs *RunnerService) RegisterRunner(context.Context, *proto1.RegisterRunnerRequest) (*proto1.RegisterRunnerResponse, error) {
-
+func (rs RunnerService) RegisterRunner(ctx context.Context, req *model.RegisterRunnerRequest) (*model.RegisterRunnerResponse, error) {
+	return &model.RegisterRunnerResponse{}, nil
 }
 
 // StreamTasks allows a runner to connect (with a valid session) get a stream of tasks to execute
-func (rs *RunnerService) StreamTasks(*proto1.StreamTasksRequest, TaaskService_StreamTasksServer) error {
-
+func (rs RunnerService) StreamTasks(req *model.StreamTasksRequest, stream RunnerService_StreamTasksServer) error {
+	return nil
 }

@@ -6,10 +6,10 @@ package service
 import (
 	fmt "fmt"
 	proto "github.com/golang/protobuf/proto"
+	model "github.com/taask/taask-server/model"
 	context "golang.org/x/net/context"
 	grpc "google.golang.org/grpc"
 	math "math"
-	proto1 "model/proto"
 )
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -26,22 +26,23 @@ const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 func init() { proto.RegisterFile("service.proto", fileDescriptor_a0b84a42fa06f626) }
 
 var fileDescriptor_a0b84a42fa06f626 = []byte{
-	// 236 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x91, 0x41, 0x4e, 0x86, 0x30,
-	0x10, 0x85, 0xd3, 0x85, 0x9a, 0xbf, 0x7f, 0x70, 0xd1, 0x18, 0x43, 0x58, 0xab, 0x89, 0x2e, 0x0a,
-	0xc1, 0x1b, 0xe8, 0xc6, 0x2d, 0xc5, 0x15, 0xbb, 0x8a, 0x13, 0x24, 0x08, 0xc5, 0x4e, 0xeb, 0xc5,
-	0x3c, 0x86, 0x97, 0x32, 0x6d, 0xc1, 0x40, 0x52, 0x13, 0x77, 0xcd, 0xbc, 0x6f, 0xde, 0x9b, 0xe9,
-	0xd0, 0x04, 0x41, 0x7f, 0xf6, 0x2d, 0xf0, 0x59, 0x2b, 0xa3, 0xd8, 0x85, 0x91, 0x12, 0x07, 0xee,
-	0x8a, 0xa0, 0xf9, 0xa2, 0x65, 0x97, 0xa3, 0x7a, 0x85, 0xf7, 0xdc, 0x23, 0xb9, 0x71, 0x80, 0x7f,
-	0x66, 0xe9, 0xb6, 0xae, 0xed, 0x34, 0x81, 0x0e, 0x4a, 0xf9, 0x45, 0xe8, 0xf1, 0x59, 0xe2, 0x50,
-	0x07, 0x07, 0xf6, 0x44, 0x4f, 0x2a, 0x0b, 0x16, 0x58, 0xca, 0x77, 0x09, 0xde, 0x80, 0x3b, 0x32,
-	0xbb, 0x8e, 0x29, 0xbe, 0xc9, 0xc9, 0x02, 0x70, 0x56, 0x13, 0x02, 0x6b, 0xe8, 0xe1, 0xf1, 0x0d,
-	0xda, 0xc1, 0x15, 0xd9, 0x55, 0xac, 0xe7, 0x57, 0x16, 0xf0, 0x61, 0x01, 0x4d, 0xdc, 0x79, 0x43,
-	0x05, 0xe7, 0x82, 0x94, 0xdf, 0x84, 0x26, 0xc2, 0xaf, 0xb1, 0xce, 0xdd, 0xd1, 0x73, 0x01, 0x5d,
-	0x8f, 0x06, 0x74, 0x10, 0xd8, 0x6d, 0xcc, 0x6c, 0xcf, 0xac, 0xb9, 0x77, 0xff, 0x41, 0x97, 0xb5,
-	0x2a, 0x7a, 0xac, 0x8d, 0x06, 0x39, 0xba, 0x91, 0x90, 0xdd, 0xc4, 0x5a, 0x37, 0xc0, 0x1a, 0xf1,
-	0xe7, 0x77, 0x16, 0xe4, 0xe1, 0xd0, 0x9c, 0x2d, 0x07, 0x7c, 0x39, 0xf5, 0x57, 0xb9, 0xff, 0x09,
-	0x00, 0x00, 0xff, 0xff, 0x79, 0x67, 0x38, 0x3e, 0xee, 0x01, 0x00, 0x00,
+	// 253 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x91, 0xc1, 0x4a, 0xc4, 0x30,
+	0x10, 0x86, 0xc9, 0x41, 0xc1, 0x2c, 0xeb, 0x21, 0x88, 0x2c, 0x3d, 0xbb, 0x8a, 0x82, 0xc9, 0xb2,
+	0xbe, 0x81, 0x5e, 0xbc, 0x6e, 0xd6, 0x53, 0x6f, 0x69, 0x1d, 0xda, 0x52, 0xdb, 0xd4, 0x4c, 0xe2,
+	0x8b, 0xf9, 0x18, 0xbe, 0x94, 0x24, 0x69, 0xa5, 0x85, 0x08, 0x7b, 0x29, 0x65, 0xfe, 0x6f, 0xfe,
+	0x7f, 0x26, 0x43, 0xd7, 0x08, 0xe6, 0xab, 0x29, 0x81, 0x0f, 0x46, 0x5b, 0xcd, 0xae, 0xac, 0x52,
+	0xd8, 0x72, 0x5f, 0x04, 0xc3, 0x47, 0x2d, 0xbb, 0xee, 0xf4, 0x3b, 0x7c, 0x88, 0x80, 0x08, 0xeb,
+	0x81, 0xf0, 0x9b, 0x6d, 0xe6, 0x75, 0xe3, 0xfa, 0x1e, 0x4c, 0x54, 0xf6, 0xdf, 0x84, 0xae, 0xde,
+	0x14, 0xb6, 0xc7, 0xe8, 0xc0, 0x5e, 0xe9, 0xd9, 0xc1, 0x81, 0x03, 0xb6, 0xe1, 0x8b, 0x84, 0x60,
+	0xc0, 0x3d, 0x99, 0x6d, 0x53, 0x4a, 0x68, 0xf2, 0xb2, 0x04, 0x1c, 0x74, 0x8f, 0xc0, 0x72, 0x7a,
+	0xf1, 0x52, 0x43, 0xd9, 0xfa, 0x22, 0xbb, 0x49, 0xf5, 0xfc, 0xc9, 0x12, 0x3e, 0x1d, 0xa0, 0x4d,
+	0x3b, 0xcf, 0xa8, 0xe8, 0xbc, 0x23, 0xfb, 0x1f, 0x42, 0xd7, 0x32, 0xac, 0x31, 0xcd, 0x5d, 0xd1,
+	0x4b, 0x09, 0x55, 0x83, 0x16, 0x4c, 0x14, 0xd8, 0x7d, 0xca, 0x6c, 0xc9, 0x4c, 0xb9, 0x0f, 0xa7,
+	0xa0, 0xe3, 0x5a, 0x07, 0xba, 0x3a, 0x5a, 0x03, 0xaa, 0xf3, 0x23, 0x21, 0xbb, 0x4d, 0xb5, 0xce,
+	0x80, 0x29, 0xe2, 0xdf, 0xe7, 0xdc, 0x91, 0xe7, 0xbb, 0x7c, 0x5b, 0x35, 0xb6, 0x76, 0x05, 0x2f,
+	0x75, 0x27, 0x02, 0x17, 0xbf, 0x8f, 0x91, 0x16, 0xe3, 0x79, 0x8b, 0xf3, 0x70, 0xb3, 0xa7, 0xdf,
+	0x00, 0x00, 0x00, 0xff, 0xff, 0xbf, 0x1f, 0x1d, 0xbd, 0x0c, 0x02, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -56,8 +57,8 @@ const _ = grpc.SupportPackageIsVersion4
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type TaskServiceClient interface {
-	Queue(ctx context.Context, in *proto1.Task, opts ...grpc.CallOption) (*proto1.QueueTaskResponse, error)
-	CheckTask(ctx context.Context, in *proto1.CheckTaskRequest, opts ...grpc.CallOption) (TaskService_CheckTaskClient, error)
+	Queue(ctx context.Context, in *model.Task, opts ...grpc.CallOption) (*model.QueueTaskResponse, error)
+	CheckTask(ctx context.Context, in *model.CheckTaskRequest, opts ...grpc.CallOption) (TaskService_CheckTaskClient, error)
 }
 
 type taskServiceClient struct {
@@ -68,8 +69,8 @@ func NewTaskServiceClient(cc *grpc.ClientConn) TaskServiceClient {
 	return &taskServiceClient{cc}
 }
 
-func (c *taskServiceClient) Queue(ctx context.Context, in *proto1.Task, opts ...grpc.CallOption) (*proto1.QueueTaskResponse, error) {
-	out := new(proto1.QueueTaskResponse)
+func (c *taskServiceClient) Queue(ctx context.Context, in *model.Task, opts ...grpc.CallOption) (*model.QueueTaskResponse, error) {
+	out := new(model.QueueTaskResponse)
 	err := c.cc.Invoke(ctx, "/taask.server.service.TaskService/Queue", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -77,7 +78,7 @@ func (c *taskServiceClient) Queue(ctx context.Context, in *proto1.Task, opts ...
 	return out, nil
 }
 
-func (c *taskServiceClient) CheckTask(ctx context.Context, in *proto1.CheckTaskRequest, opts ...grpc.CallOption) (TaskService_CheckTaskClient, error) {
+func (c *taskServiceClient) CheckTask(ctx context.Context, in *model.CheckTaskRequest, opts ...grpc.CallOption) (TaskService_CheckTaskClient, error) {
 	stream, err := c.cc.NewStream(ctx, &_TaskService_serviceDesc.Streams[0], "/taask.server.service.TaskService/CheckTask", opts...)
 	if err != nil {
 		return nil, err
@@ -93,7 +94,7 @@ func (c *taskServiceClient) CheckTask(ctx context.Context, in *proto1.CheckTaskR
 }
 
 type TaskService_CheckTaskClient interface {
-	Recv() (*proto1.CheckTaskResponse, error)
+	Recv() (*model.CheckTaskResponse, error)
 	grpc.ClientStream
 }
 
@@ -101,8 +102,8 @@ type taskServiceCheckTaskClient struct {
 	grpc.ClientStream
 }
 
-func (x *taskServiceCheckTaskClient) Recv() (*proto1.CheckTaskResponse, error) {
-	m := new(proto1.CheckTaskResponse)
+func (x *taskServiceCheckTaskClient) Recv() (*model.CheckTaskResponse, error) {
+	m := new(model.CheckTaskResponse)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -111,8 +112,8 @@ func (x *taskServiceCheckTaskClient) Recv() (*proto1.CheckTaskResponse, error) {
 
 // TaskServiceServer is the server API for TaskService service.
 type TaskServiceServer interface {
-	Queue(context.Context, *proto1.Task) (*proto1.QueueTaskResponse, error)
-	CheckTask(*proto1.CheckTaskRequest, TaskService_CheckTaskServer) error
+	Queue(context.Context, *model.Task) (*model.QueueTaskResponse, error)
+	CheckTask(*model.CheckTaskRequest, TaskService_CheckTaskServer) error
 }
 
 func RegisterTaskServiceServer(s *grpc.Server, srv TaskServiceServer) {
@@ -120,7 +121,7 @@ func RegisterTaskServiceServer(s *grpc.Server, srv TaskServiceServer) {
 }
 
 func _TaskService_Queue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(proto1.Task)
+	in := new(model.Task)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -132,13 +133,13 @@ func _TaskService_Queue_Handler(srv interface{}, ctx context.Context, dec func(i
 		FullMethod: "/taask.server.service.TaskService/Queue",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TaskServiceServer).Queue(ctx, req.(*proto1.Task))
+		return srv.(TaskServiceServer).Queue(ctx, req.(*model.Task))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _TaskService_CheckTask_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(proto1.CheckTaskRequest)
+	m := new(model.CheckTaskRequest)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
@@ -146,7 +147,7 @@ func _TaskService_CheckTask_Handler(srv interface{}, stream grpc.ServerStream) e
 }
 
 type TaskService_CheckTaskServer interface {
-	Send(*proto1.CheckTaskResponse) error
+	Send(*model.CheckTaskResponse) error
 	grpc.ServerStream
 }
 
@@ -154,7 +155,7 @@ type taskServiceCheckTaskServer struct {
 	grpc.ServerStream
 }
 
-func (x *taskServiceCheckTaskServer) Send(m *proto1.CheckTaskResponse) error {
+func (x *taskServiceCheckTaskServer) Send(m *model.CheckTaskResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
@@ -181,8 +182,8 @@ var _TaskService_serviceDesc = grpc.ServiceDesc{
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type RunnerServiceClient interface {
-	RegisterRunner(ctx context.Context, in *proto1.RegisterRunnerRequest, opts ...grpc.CallOption) (*proto1.RegisterRunnerResponse, error)
-	StreamTasks(ctx context.Context, in *proto1.StreamTasksRequest, opts ...grpc.CallOption) (RunnerService_StreamTasksClient, error)
+	RegisterRunner(ctx context.Context, in *model.RegisterRunnerRequest, opts ...grpc.CallOption) (*model.RegisterRunnerResponse, error)
+	StreamTasks(ctx context.Context, in *model.StreamTasksRequest, opts ...grpc.CallOption) (RunnerService_StreamTasksClient, error)
 }
 
 type runnerServiceClient struct {
@@ -193,8 +194,8 @@ func NewRunnerServiceClient(cc *grpc.ClientConn) RunnerServiceClient {
 	return &runnerServiceClient{cc}
 }
 
-func (c *runnerServiceClient) RegisterRunner(ctx context.Context, in *proto1.RegisterRunnerRequest, opts ...grpc.CallOption) (*proto1.RegisterRunnerResponse, error) {
-	out := new(proto1.RegisterRunnerResponse)
+func (c *runnerServiceClient) RegisterRunner(ctx context.Context, in *model.RegisterRunnerRequest, opts ...grpc.CallOption) (*model.RegisterRunnerResponse, error) {
+	out := new(model.RegisterRunnerResponse)
 	err := c.cc.Invoke(ctx, "/taask.server.service.RunnerService/RegisterRunner", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -202,7 +203,7 @@ func (c *runnerServiceClient) RegisterRunner(ctx context.Context, in *proto1.Reg
 	return out, nil
 }
 
-func (c *runnerServiceClient) StreamTasks(ctx context.Context, in *proto1.StreamTasksRequest, opts ...grpc.CallOption) (RunnerService_StreamTasksClient, error) {
+func (c *runnerServiceClient) StreamTasks(ctx context.Context, in *model.StreamTasksRequest, opts ...grpc.CallOption) (RunnerService_StreamTasksClient, error) {
 	stream, err := c.cc.NewStream(ctx, &_RunnerService_serviceDesc.Streams[0], "/taask.server.service.RunnerService/StreamTasks", opts...)
 	if err != nil {
 		return nil, err
@@ -218,7 +219,7 @@ func (c *runnerServiceClient) StreamTasks(ctx context.Context, in *proto1.Stream
 }
 
 type RunnerService_StreamTasksClient interface {
-	Recv() (*proto1.Task, error)
+	Recv() (*model.Task, error)
 	grpc.ClientStream
 }
 
@@ -226,8 +227,8 @@ type runnerServiceStreamTasksClient struct {
 	grpc.ClientStream
 }
 
-func (x *runnerServiceStreamTasksClient) Recv() (*proto1.Task, error) {
-	m := new(proto1.Task)
+func (x *runnerServiceStreamTasksClient) Recv() (*model.Task, error) {
+	m := new(model.Task)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
 	}
@@ -236,8 +237,8 @@ func (x *runnerServiceStreamTasksClient) Recv() (*proto1.Task, error) {
 
 // RunnerServiceServer is the server API for RunnerService service.
 type RunnerServiceServer interface {
-	RegisterRunner(context.Context, *proto1.RegisterRunnerRequest) (*proto1.RegisterRunnerResponse, error)
-	StreamTasks(*proto1.StreamTasksRequest, RunnerService_StreamTasksServer) error
+	RegisterRunner(context.Context, *model.RegisterRunnerRequest) (*model.RegisterRunnerResponse, error)
+	StreamTasks(*model.StreamTasksRequest, RunnerService_StreamTasksServer) error
 }
 
 func RegisterRunnerServiceServer(s *grpc.Server, srv RunnerServiceServer) {
@@ -245,7 +246,7 @@ func RegisterRunnerServiceServer(s *grpc.Server, srv RunnerServiceServer) {
 }
 
 func _RunnerService_RegisterRunner_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(proto1.RegisterRunnerRequest)
+	in := new(model.RegisterRunnerRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -257,13 +258,13 @@ func _RunnerService_RegisterRunner_Handler(srv interface{}, ctx context.Context,
 		FullMethod: "/taask.server.service.RunnerService/RegisterRunner",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(RunnerServiceServer).RegisterRunner(ctx, req.(*proto1.RegisterRunnerRequest))
+		return srv.(RunnerServiceServer).RegisterRunner(ctx, req.(*model.RegisterRunnerRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _RunnerService_StreamTasks_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(proto1.StreamTasksRequest)
+	m := new(model.StreamTasksRequest)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
@@ -271,7 +272,7 @@ func _RunnerService_StreamTasks_Handler(srv interface{}, stream grpc.ServerStrea
 }
 
 type RunnerService_StreamTasksServer interface {
-	Send(*proto1.Task) error
+	Send(*model.Task) error
 	grpc.ServerStream
 }
 
@@ -279,7 +280,7 @@ type runnerServiceStreamTasksServer struct {
 	grpc.ServerStream
 }
 
-func (x *runnerServiceStreamTasksServer) Send(m *proto1.Task) error {
+func (x *runnerServiceStreamTasksServer) Send(m *model.Task) error {
 	return x.ServerStream.SendMsg(m)
 }
 
