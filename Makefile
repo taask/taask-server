@@ -1,12 +1,12 @@
 
 proto/model:
-	protoc -I=src -I=src/model/proto --go_out=plugins=grpc:src/model $(shell ls ./src/model/proto/)
+	protoc -I=. -I=model/proto --go_out=plugins=grpc:$(GOPATH)/src $(shell ls ./model/proto/)
 
 proto/crypto:
-	protoc -I=src -I=src/crypto/proto --go_out=plugins=grpc:src/crypto $(shell ls ./src/crypto/proto/)
+	protoc -I=. -I=crypto/proto --go_out=plugins=grpc:$(GOPATH)/src $(shell ls ./crypto/proto/)
 
 proto/service:
-	protoc -I=src -I=src/service/proto --go_out=plugins=grpc:src/service $(shell ls ./src/service/proto/)
+	protoc -I=. -I=service/proto --go_out=plugins=grpc:$(GOPATH)/src $(shell ls ./service/proto/)
 
 proto: proto/model proto/crypto proto/service
 
