@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-import "crypto/proto/message.proto";
+import "github.com/cohix/simplcrypto/proto/message.proto";
 
 package taask.server.model;
 option go_package = "github.com/taask/taask-server/model";
@@ -9,15 +9,15 @@ message RegisterRunnerRequest {
 	string UUID = 1;
 	string Type = 2;
 	string PubKey = 3;
-	taask.server.crypto.Signature JoinCodeSignature = 4;
+	simpl.crypto.Signature JoinCodeSignature = 4;
 	repeated string Tags = 5;
 }
 
 message RegisterRunnerResponse {
 	string EncChallenge = 1;
-	taask.server.crypto.Message EncGlobalKey = 2;
+	simpl.crypto.Message EncGlobalKey = 2;
 }
 
 message StreamTasksRequest {
-	taask.server.crypto.Signature ChallengeSignature = 1;
+	simpl.crypto.Signature ChallengeSignature = 1;
 }
