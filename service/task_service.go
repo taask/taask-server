@@ -4,6 +4,7 @@ import (
 	"log"
 	"net"
 
+	"github.com/taask/taask-server/brain"
 	model "github.com/taask/taask-server/model"
 	context "golang.org/x/net/context"
 	grpc "google.golang.org/grpc"
@@ -12,7 +13,7 @@ import (
 const taskServicePort = ":3688"
 
 // StartTaskService starts the runner service
-func StartTaskService(errChan chan error) {
+func StartTaskService(brain *brain.Manager, errChan chan error) {
 	lis, err := net.Listen("tcp", taskServicePort)
 	if err != nil {
 		errChan <- err
@@ -21,7 +22,7 @@ func StartTaskService(errChan chan error) {
 
 	grpcServer := grpc.NewServer()
 
-	RegisterTaskServiceServer(grpcServer, TaskService{})
+	RegisterTaskServiceServer(grpcServer, TaskService{Manager: brain})
 
 	log.Println("starting taask-server task service on :3688")
 	if err := grpcServer.Serve(lis); err != nil {
@@ -30,7 +31,9 @@ func StartTaskService(errChan chan error) {
 }
 
 // TaskService describes the service available to taask clients
-type TaskService struct{}
+type TaskService struct {
+	Manager *brain.Manager
+}
 
 // Queue handles queuing up a task to be distributed to runners
 func (ts TaskService) Queue(context.Context, *model.Task) (*model.QueueTaskResponse, error) {
