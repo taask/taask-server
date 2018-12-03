@@ -2,6 +2,30 @@
 
 
 [[projects]]
+  branch = "master"
+  digest = "1:0f52cd80598510dd17bc8445c1546bb0d36561f0d04a381b5abd888f8764264b"
+  name = "github.com/cohix/simplcrypto"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "ff6391719754052cea8aa3a3de86d55a89ede183"
+
+[[projects]]
+  branch = "master"
+  digest = "1:a3d6c3a6e43eed887264863324aaae5e7b6ef559414988a9aeaf3560ea1f44fc"
+  name = "github.com/cohix/simplflag"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "fb248936252b8e54f52d47d18a00a41b7e5cb018"
+
+[[projects]]
+  branch = "master"
+  digest = "1:5c46e9d977db2a136594a85630160def267e1f745b047e98c178bb9baeedf9a4"
+  name = "github.com/cohix/simplog"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "5dd25e09d33a45d09754eff45328faa92c7272ec"
+
+[[projects]]
   digest = "1:4c0989ca0bcd10799064318923b9bc2db6b4d6338dd75f3f2d86c3511aaaf5cf"
   name = "github.com/golang/protobuf"
   packages = [
@@ -117,6 +141,8 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/cohix/simplcrypto",
+    "github.com/cohix/simplog",
     "github.com/golang/protobuf/proto",
     "github.com/pkg/errors",
     "golang.org/x/net/context",
