@@ -39,6 +39,8 @@ type RunnerService struct {
 
 // AuthRunner allows a runner to advertise itself and perform auth with the server
 func (rs *RunnerService) AuthRunner(ctx context.Context, req *model.AuthRunnerRequest) (*model.AuthRunnerResponse, error) {
+	defer log.LogTrace("AuthRunner")()
+
 	return rs.Manager.AuthRunner(req)
 }
 
@@ -76,6 +78,8 @@ func (rs *RunnerService) RegisterRunner(req *model.RegisterRunnerRequest, stream
 
 // UpdateTask handles update task calls
 func (rs *RunnerService) UpdateTask(ctx context.Context, req *model.TaskUpdate) (*Empty, error) {
+	defer log.LogTrace(fmt.Sprintf("UpdateTask task %s", req.UUID))
+
 	if err := rs.Manager.UpdateTask(req); err != nil {
 		log.LogError(errors.Wrap(err, "failed to UpdateTask"))
 		return nil, err

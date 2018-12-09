@@ -3,11 +3,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:e94d97354b7620d0e1f18a65a049113b5ac743691b4761bd49c80737303e1e59"
+  digest = "1:8f963471e74fca10f28bc4e26f5001025d05a2b8107007a7ad3cfd8ff78bf7ad"
   name = "github.com/cohix/simplcrypto"
   packages = ["."]
   pruneopts = "UT"
-  revision = "3c1ccc048db80cb546b2409f4ffa32dcf12ab375"
+  revision = "19c660047c20d193b4830074e5454651c84a934c"
 
 [[projects]]
   branch = "master"

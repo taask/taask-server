@@ -120,9 +120,9 @@ const (
 )
 
 // Verify verifies src with kp's pubKey and the provided signature
-func (kp *KeyPair) Verify(src []byte, sig *Signature) bool {
+func (kp *KeyPair) Verify(src []byte, sig *Signature) error {
 	if sig.KID != kp.KID {
-		return SigUnverified
+		return fmt.Errorf("signature KID %s does not match key KID %s", sig.KID, kp.KID)
 	}
 
 	h := crypto.SHA256
@@ -131,10 +131,10 @@ func (kp *KeyPair) Verify(src []byte, sig *Signature) bool {
 	hashed := hasher.Sum(nil)
 
 	if err := rsa.VerifyPKCS1v15(kp.Public, h, hashed, sig.Signature); err != nil {
-		return SigUnverified
+		return err
 	}
 
-	return SigVerified
+	return nil
 }
 
 // KeyPairFromPubKeyJSON unmarshals and de-serializes a serializablePubKey from JSON so it can be used to encrypt or validate signatures

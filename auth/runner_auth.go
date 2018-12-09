@@ -58,8 +58,8 @@ func (am *RunnerAuthManager) AttemptAuth(pubKey *simplcrypto.SerializablePubKey,
 		return nil, errors.Wrap(err, "failed to KeyPairFromSerializedPubKey")
 	}
 
-	if result := runnerKey.Verify([]byte(am.JoinCode), codeSig); result == simplcrypto.SigUnverified {
-		return nil, errors.Wrap(errors.New("signature verification failed"), "failed to Verify")
+	if err := runnerKey.Verify([]byte(am.JoinCode), codeSig); err != nil {
+		return nil, errors.Wrap(err, "failed to Verify")
 	}
 
 	// at this point, the auth succeeds, so we generate and encrypt the challenge
@@ -107,8 +107,8 @@ func (am *RunnerAuthManager) CheckRunnerChallenge(chalSig *simplcrypto.Signature
 		return errors.New(fmt.Sprintf("runner challenge for KID %s does not exist", chalSig.KID))
 	}
 
-	if result := challenge.PubKey.Verify(challenge.Challenge, chalSig); result == simplcrypto.SigUnverified {
-		return errors.New("challenge verification failed")
+	if err := challenge.PubKey.Verify(challenge.Challenge, chalSig); err != nil {
+		return errors.Wrap(err, "failed to Verify")
 	}
 
 	delete(am.authedRunnerChallenges, chalSig.KID)
