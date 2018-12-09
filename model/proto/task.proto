@@ -8,16 +8,13 @@ option go_package = "github.com/taask/taask-server/model";
 
 message Task {
 	string UUID = 1;
-	string Type = 2;
-	simpl.crypto.serializablePubKey PubKey = 3;
+	string Kind = 2;
+	simpl.crypto.SerializablePubKey ResultPubKey = 3;
 	bytes Body = 4;
+	string status = 5;
 	repeated string Annotations = 6;
-}
-
-message TaskResult {
-	string UUID = 1;
-	simpl.crypto.Message EncResponse = 2;
-	simpl.crypto.Message EncResponseSymKey = 3;
+	simpl.crypto.Message EncResult = 7;
+	simpl.crypto.Message EncResultSymKey = 8;
 }
 
 message QueueTaskResponse {
@@ -29,7 +26,14 @@ message CheckTaskRequest {
 }
 
 message CheckTaskResponse {
-	bool completed = 1;
+	string status = 1;
 	int32 progress = 2;
-	TaskResult result = 3;
+	TaskUpdate result = 3;
+}
+
+message TaskUpdate {
+	string UUID = 1;
+	string status = 2;
+	simpl.crypto.Message EncResult = 3;
+	simpl.crypto.Message EncResultSymKey = 4;
 }

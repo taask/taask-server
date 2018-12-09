@@ -200,7 +200,7 @@ func (kp *KeyPair) SerializablePubKey() *SerializablePubKey {
 	return serializable
 }
 
-// serializablePubKey is defined in keypair.pb.go
+// SerializablePubKey is defined in keypair.pb.go
 func (spk *SerializablePubKey) deserialize() (*rsa.PublicKey, error) {
 	realN := &big.Int{}
 	nBytes, err := Base64URLDecode(spk.N)

@@ -10,12 +10,12 @@ import (
 	"github.com/taask/taask-server/model"
 )
 
-// ErrorNoRunnersRegistered is returned when a task is scheduled to a type that has no runners
+// ErrorNoRunnersRegistered is returned when a task is scheduled to a Kind that has no runners
 var ErrorNoRunnersRegistered = errors.New("no runners registered")
 
 // Manager manages the scheduling of tasks to runners
 type Manager struct {
-	// A map of runner types to pools of runners
+	// A map of runner Kinds to pools of runners
 	runnerPools map[string]*runnerPool
 
 	// scheduleChan is used to schedule tasks
@@ -40,6 +40,8 @@ func NewManager() *Manager {
 
 // Start begins the scheduler
 func (m *Manager) Start() {
+	defer log.LogTrace("schedule.Manager.Start()")()
+
 	for {
 		m.queueNewTaskIfExists()
 
@@ -49,18 +51,20 @@ func (m *Manager) Start() {
 			continue
 		}
 
-		runnerPool, ok := m.runnerPools[nextTask.Type]
+		runnerPool, ok := m.runnerPools[nextTask.Kind]
 		if !ok {
-			log.LogWarn(fmt.Sprintf("schedule task %s: no runners of type %s registered", nextTask.UUID, nextTask.Type))
+			log.LogWarn(fmt.Sprintf("schedule task %s: no runners of Kind %s registered", nextTask.UUID, nextTask.Kind))
 			m.requeueTask(nextTask)
 			continue
 		}
 
 		runner, err := runnerPool.nextRunner()
 		if err != nil {
-			log.LogWarn(fmt.Sprintf("schedule task %s: no runners of type %s registered", nextTask.UUID, nextTask.Type))
+			log.LogWarn(fmt.Sprintf("schedule task %s: no runners of Kind %s registered", nextTask.UUID, nextTask.Kind))
 			m.requeueTask(nextTask)
 			continue
+		} else {
+			log.LogInfo(fmt.Sprintf("scheduling task %s to runner %s", nextTask.UUID, runner.UUID))
 		}
 
 		runner.TaskChannel <- nextTask
@@ -69,6 +73,8 @@ func (m *Manager) Start() {
 
 // ScheduleTask schedules a task
 func (m *Manager) ScheduleTask(task *model.Task) {
+	defer log.LogTrace(fmt.Sprintf("ScheduleTask %s", task.UUID))()
+
 	m.scheduleChan <- task
 }
 

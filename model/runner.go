@@ -3,7 +3,7 @@ package model
 // Runner describes a runner available for tasks
 type Runner struct {
 	UUID        string
-	Type        string
+	Kind        string
 	Tags        []string
 	TaskChannel (chan *Task)
 }

@@ -21,12 +21,105 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
+type AuthRunnerRequest struct {
+	PubKey               *simplcrypto.SerializablePubKey `protobuf:"bytes,1,opt,name=PubKey,proto3" json:"PubKey,omitempty"`
+	JoinCodeSignature    *simplcrypto.Signature          `protobuf:"bytes,2,opt,name=JoinCodeSignature,proto3" json:"JoinCodeSignature,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}                        `json:"-"`
+	XXX_unrecognized     []byte                          `json:"-"`
+	XXX_sizecache        int32                           `json:"-"`
+}
+
+func (m *AuthRunnerRequest) Reset()         { *m = AuthRunnerRequest{} }
+func (m *AuthRunnerRequest) String() string { return proto.CompactTextString(m) }
+func (*AuthRunnerRequest) ProtoMessage()    {}
+func (*AuthRunnerRequest) Descriptor() ([]byte, []int) {
+	return fileDescriptor_48eceea7e2abc593, []int{0}
+}
+
+func (m *AuthRunnerRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_AuthRunnerRequest.Unmarshal(m, b)
+}
+func (m *AuthRunnerRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_AuthRunnerRequest.Marshal(b, m, deterministic)
+}
+func (m *AuthRunnerRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AuthRunnerRequest.Merge(m, src)
+}
+func (m *AuthRunnerRequest) XXX_Size() int {
+	return xxx_messageInfo_AuthRunnerRequest.Size(m)
+}
+func (m *AuthRunnerRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_AuthRunnerRequest.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AuthRunnerRequest proto.InternalMessageInfo
+
+func (m *AuthRunnerRequest) GetPubKey() *simplcrypto.SerializablePubKey {
+	if m != nil {
+		return m.PubKey
+	}
+	return nil
+}
+
+func (m *AuthRunnerRequest) GetJoinCodeSignature() *simplcrypto.Signature {
+	if m != nil {
+		return m.JoinCodeSignature
+	}
+	return nil
+}
+
+type AuthRunnerResponse struct {
+	EncChallenge         *simplcrypto.Message `protobuf:"bytes,1,opt,name=EncChallenge,proto3" json:"EncChallenge,omitempty"`
+	EncChallengeKey      *simplcrypto.Message `protobuf:"bytes,2,opt,name=EncChallengeKey,proto3" json:"EncChallengeKey,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
+	XXX_unrecognized     []byte               `json:"-"`
+	XXX_sizecache        int32                `json:"-"`
+}
+
+func (m *AuthRunnerResponse) Reset()         { *m = AuthRunnerResponse{} }
+func (m *AuthRunnerResponse) String() string { return proto.CompactTextString(m) }
+func (*AuthRunnerResponse) ProtoMessage()    {}
+func (*AuthRunnerResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_48eceea7e2abc593, []int{1}
+}
+
+func (m *AuthRunnerResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_AuthRunnerResponse.Unmarshal(m, b)
+}
+func (m *AuthRunnerResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_AuthRunnerResponse.Marshal(b, m, deterministic)
+}
+func (m *AuthRunnerResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AuthRunnerResponse.Merge(m, src)
+}
+func (m *AuthRunnerResponse) XXX_Size() int {
+	return xxx_messageInfo_AuthRunnerResponse.Size(m)
+}
+func (m *AuthRunnerResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_AuthRunnerResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_AuthRunnerResponse proto.InternalMessageInfo
+
+func (m *AuthRunnerResponse) GetEncChallenge() *simplcrypto.Message {
+	if m != nil {
+		return m.EncChallenge
+	}
+	return nil
+}
+
+func (m *AuthRunnerResponse) GetEncChallengeKey() *simplcrypto.Message {
+	if m != nil {
+		return m.EncChallengeKey
+	}
+	return nil
+}
+
 type RegisterRunnerRequest struct {
 	UUID                 string                 `protobuf:"bytes,1,opt,name=UUID,proto3" json:"UUID,omitempty"`
-	Type                 string                 `protobuf:"bytes,2,opt,name=Type,proto3" json:"Type,omitempty"`
-	PubKey               string                 `protobuf:"bytes,3,opt,name=PubKey,proto3" json:"PubKey,omitempty"`
-	JoinCodeSignature    *simplcrypto.Signature `protobuf:"bytes,4,opt,name=JoinCodeSignature,proto3" json:"JoinCodeSignature,omitempty"`
-	Tags                 []string               `protobuf:"bytes,5,rep,name=Tags,proto3" json:"Tags,omitempty"`
+	Kind                 string                 `protobuf:"bytes,2,opt,name=Kind,proto3" json:"Kind,omitempty"`
+	Tags                 []string               `protobuf:"bytes,3,rep,name=Tags,proto3" json:"Tags,omitempty"`
+	ChallengeSignature   *simplcrypto.Signature `protobuf:"bytes,4,opt,name=ChallengeSignature,proto3" json:"ChallengeSignature,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}               `json:"-"`
 	XXX_unrecognized     []byte                 `json:"-"`
 	XXX_sizecache        int32                  `json:"-"`
@@ -36,7 +129,7 @@ func (m *RegisterRunnerRequest) Reset()         { *m = RegisterRunnerRequest{} }
 func (m *RegisterRunnerRequest) String() string { return proto.CompactTextString(m) }
 func (*RegisterRunnerRequest) ProtoMessage()    {}
 func (*RegisterRunnerRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_48eceea7e2abc593, []int{0}
+	return fileDescriptor_48eceea7e2abc593, []int{2}
 }
 
 func (m *RegisterRunnerRequest) XXX_Unmarshal(b []byte) error {
@@ -64,25 +157,11 @@ func (m *RegisterRunnerRequest) GetUUID() string {
 	return ""
 }
 
-func (m *RegisterRunnerRequest) GetType() string {
+func (m *RegisterRunnerRequest) GetKind() string {
 	if m != nil {
-		return m.Type
+		return m.Kind
 	}
 	return ""
-}
-
-func (m *RegisterRunnerRequest) GetPubKey() string {
-	if m != nil {
-		return m.PubKey
-	}
-	return ""
-}
-
-func (m *RegisterRunnerRequest) GetJoinCodeSignature() *simplcrypto.Signature {
-	if m != nil {
-		return m.JoinCodeSignature
-	}
-	return nil
 }
 
 func (m *RegisterRunnerRequest) GetTags() []string {
@@ -92,86 +171,7 @@ func (m *RegisterRunnerRequest) GetTags() []string {
 	return nil
 }
 
-type RegisterRunnerResponse struct {
-	EncChallenge         string               `protobuf:"bytes,1,opt,name=EncChallenge,proto3" json:"EncChallenge,omitempty"`
-	EncGlobalKey         *simplcrypto.Message `protobuf:"bytes,2,opt,name=EncGlobalKey,proto3" json:"EncGlobalKey,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
-	XXX_unrecognized     []byte               `json:"-"`
-	XXX_sizecache        int32                `json:"-"`
-}
-
-func (m *RegisterRunnerResponse) Reset()         { *m = RegisterRunnerResponse{} }
-func (m *RegisterRunnerResponse) String() string { return proto.CompactTextString(m) }
-func (*RegisterRunnerResponse) ProtoMessage()    {}
-func (*RegisterRunnerResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_48eceea7e2abc593, []int{1}
-}
-
-func (m *RegisterRunnerResponse) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_RegisterRunnerResponse.Unmarshal(m, b)
-}
-func (m *RegisterRunnerResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_RegisterRunnerResponse.Marshal(b, m, deterministic)
-}
-func (m *RegisterRunnerResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RegisterRunnerResponse.Merge(m, src)
-}
-func (m *RegisterRunnerResponse) XXX_Size() int {
-	return xxx_messageInfo_RegisterRunnerResponse.Size(m)
-}
-func (m *RegisterRunnerResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_RegisterRunnerResponse.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_RegisterRunnerResponse proto.InternalMessageInfo
-
-func (m *RegisterRunnerResponse) GetEncChallenge() string {
-	if m != nil {
-		return m.EncChallenge
-	}
-	return ""
-}
-
-func (m *RegisterRunnerResponse) GetEncGlobalKey() *simplcrypto.Message {
-	if m != nil {
-		return m.EncGlobalKey
-	}
-	return nil
-}
-
-type StreamTasksRequest struct {
-	ChallengeSignature   *simplcrypto.Signature `protobuf:"bytes,1,opt,name=ChallengeSignature,proto3" json:"ChallengeSignature,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}               `json:"-"`
-	XXX_unrecognized     []byte                 `json:"-"`
-	XXX_sizecache        int32                  `json:"-"`
-}
-
-func (m *StreamTasksRequest) Reset()         { *m = StreamTasksRequest{} }
-func (m *StreamTasksRequest) String() string { return proto.CompactTextString(m) }
-func (*StreamTasksRequest) ProtoMessage()    {}
-func (*StreamTasksRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_48eceea7e2abc593, []int{2}
-}
-
-func (m *StreamTasksRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_StreamTasksRequest.Unmarshal(m, b)
-}
-func (m *StreamTasksRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_StreamTasksRequest.Marshal(b, m, deterministic)
-}
-func (m *StreamTasksRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_StreamTasksRequest.Merge(m, src)
-}
-func (m *StreamTasksRequest) XXX_Size() int {
-	return xxx_messageInfo_StreamTasksRequest.Size(m)
-}
-func (m *StreamTasksRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_StreamTasksRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_StreamTasksRequest proto.InternalMessageInfo
-
-func (m *StreamTasksRequest) GetChallengeSignature() *simplcrypto.Signature {
+func (m *RegisterRunnerRequest) GetChallengeSignature() *simplcrypto.Signature {
 	if m != nil {
 		return m.ChallengeSignature
 	}
@@ -179,33 +179,35 @@ func (m *StreamTasksRequest) GetChallengeSignature() *simplcrypto.Signature {
 }
 
 func init() {
+	proto.RegisterType((*AuthRunnerRequest)(nil), "taask.server.model.AuthRunnerRequest")
+	proto.RegisterType((*AuthRunnerResponse)(nil), "taask.server.model.AuthRunnerResponse")
 	proto.RegisterType((*RegisterRunnerRequest)(nil), "taask.server.model.RegisterRunnerRequest")
-	proto.RegisterType((*RegisterRunnerResponse)(nil), "taask.server.model.RegisterRunnerResponse")
-	proto.RegisterType((*StreamTasksRequest)(nil), "taask.server.model.StreamTasksRequest")
 }
 
 func init() { proto.RegisterFile("runner.proto", fileDescriptor_48eceea7e2abc593) }
 
 var fileDescriptor_48eceea7e2abc593 = []byte{
-	// 319 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x7c, 0x91, 0x4f, 0x4b, 0xf3, 0x40,
-	0x10, 0xc6, 0x49, 0xdb, 0xb7, 0xf0, 0xae, 0xbd, 0xb8, 0xd0, 0x1a, 0x3c, 0x95, 0x88, 0xd0, 0x8b,
-	0x1b, 0xd1, 0x93, 0x57, 0x6b, 0x29, 0x2a, 0x82, 0xa4, 0xed, 0x45, 0xf0, 0xb0, 0x49, 0x87, 0x6d,
-	0x68, 0xb2, 0x1b, 0x77, 0x36, 0x6a, 0xbf, 0x96, 0x9f, 0x50, 0x3a, 0x5b, 0xab, 0x55, 0xf1, 0x12,
-	0x26, 0xcf, 0xce, 0x9f, 0xdf, 0xcc, 0xc3, 0x3a, 0xb6, 0xd6, 0x1a, 0xac, 0xa8, 0xac, 0x71, 0x86,
-	0x73, 0x27, 0x25, 0x2e, 0x05, 0x82, 0x7d, 0x06, 0x2b, 0x4a, 0x33, 0x87, 0xe2, 0xf0, 0x54, 0xe5,
-	0x6e, 0x51, 0xa7, 0x22, 0x33, 0x65, 0x9c, 0x99, 0x45, 0xfe, 0x1a, 0x63, 0x5e, 0x56, 0x45, 0x66,
-	0x57, 0x95, 0x33, 0x31, 0xd5, 0xc5, 0x25, 0x20, 0x4a, 0x05, 0xbe, 0x4b, 0xf4, 0x16, 0xb0, 0x6e,
-	0x02, 0x2a, 0x47, 0x07, 0x36, 0xa1, 0xf6, 0x09, 0x3c, 0xd5, 0x80, 0x8e, 0x73, 0xd6, 0x9a, 0xcd,
-	0xae, 0xaf, 0xc2, 0xa0, 0x1f, 0x0c, 0xfe, 0x27, 0x14, 0xaf, 0xb5, 0xe9, 0xaa, 0x82, 0xb0, 0xe1,
-	0xb5, 0x75, 0xcc, 0x7b, 0xac, 0x7d, 0x5f, 0xa7, 0xb7, 0xb0, 0x0a, 0x9b, 0xa4, 0x6e, 0xfe, 0xf8,
-	0x88, 0xed, 0xdf, 0x98, 0x5c, 0x0f, 0xcd, 0x1c, 0x26, 0xb9, 0xd2, 0xd2, 0xd5, 0x16, 0xc2, 0x56,
-	0x3f, 0x18, 0xec, 0x9d, 0x1d, 0x08, 0xc2, 0x12, 0x9e, 0x4b, 0x6c, 0x9f, 0x93, 0x9f, 0x15, 0x34,
-	0x52, 0x2a, 0x0c, 0xff, 0xf5, 0x9b, 0x34, 0x52, 0x2a, 0x8c, 0x5e, 0x58, 0xef, 0x3b, 0x33, 0x56,
-	0x46, 0x23, 0xf0, 0x88, 0x75, 0x46, 0x3a, 0x1b, 0x2e, 0x64, 0x51, 0x80, 0x56, 0xb0, 0x81, 0xdf,
-	0xd1, 0xf8, 0x05, 0xe5, 0x8c, 0x0b, 0x93, 0xca, 0x62, 0x8d, 0xdd, 0x20, 0xa6, 0xee, 0x2e, 0xd3,
-	0x9d, 0xbf, 0x52, 0xb2, 0x93, 0x1a, 0x3d, 0x32, 0x3e, 0x71, 0x16, 0x64, 0x39, 0x95, 0xb8, 0xc4,
-	0x8f, 0x4b, 0x8d, 0x19, 0xdf, 0x76, 0xff, 0x5c, 0x35, 0xf8, 0x7b, 0xd5, 0x5f, 0x4a, 0x2e, 0x8f,
-	0x1f, 0x8e, 0xbe, 0x18, 0x48, 0xfe, 0xfa, 0xef, 0x89, 0x77, 0x39, 0x26, 0x97, 0xd3, 0x36, 0x59,
-	0x77, 0xfe, 0x1e, 0x00, 0x00, 0xff, 0xff, 0x3c, 0x70, 0x1f, 0x21, 0x10, 0x02, 0x00, 0x00,
+	// 339 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x52, 0x4d, 0x4b, 0xc3, 0x40,
+	0x10, 0x25, 0x6d, 0x29, 0x74, 0x2d, 0x48, 0x17, 0x8a, 0xc5, 0x53, 0xa9, 0x08, 0x5e, 0xdc, 0x88,
+	0x5e, 0xf4, 0x24, 0x5a, 0x8b, 0x68, 0x11, 0x64, 0x6b, 0x2f, 0xde, 0x36, 0xe9, 0x90, 0x2c, 0x4d,
+	0x76, 0xe3, 0x7e, 0x88, 0xf5, 0x57, 0x78, 0xf0, 0xe8, 0x8f, 0x95, 0xec, 0x56, 0x6d, 0xaa, 0x14,
+	0x2f, 0x61, 0x32, 0x79, 0xef, 0xcd, 0xcb, 0x9b, 0x41, 0x6d, 0x65, 0x85, 0x00, 0x45, 0x0a, 0x25,
+	0x8d, 0xc4, 0xd8, 0x30, 0xa6, 0xe7, 0x44, 0x83, 0x7a, 0x06, 0x45, 0x72, 0x39, 0x83, 0x6c, 0xf7,
+	0x28, 0xe1, 0x26, 0xb5, 0x11, 0x89, 0x65, 0x1e, 0xc6, 0x32, 0xe5, 0x2f, 0xa1, 0xe6, 0x79, 0x91,
+	0xc5, 0x6a, 0x51, 0x18, 0x19, 0x3a, 0x5e, 0x98, 0x83, 0xd6, 0x2c, 0x01, 0xaf, 0xf2, 0x2f, 0xc6,
+	0x1c, 0x16, 0x05, 0xe3, 0xcb, 0xb9, 0x83, 0xf7, 0x00, 0x75, 0x2e, 0xac, 0x49, 0xa9, 0x33, 0x43,
+	0xe1, 0xc9, 0x82, 0x36, 0xf8, 0x14, 0x35, 0xef, 0x6d, 0x34, 0x86, 0x45, 0x2f, 0xe8, 0x07, 0x07,
+	0x5b, 0xc7, 0x7d, 0xe2, 0x74, 0x88, 0x17, 0x22, 0x13, 0x50, 0x9c, 0x65, 0xfc, 0x95, 0x45, 0x19,
+	0x78, 0x1c, 0x5d, 0xe2, 0xf1, 0x08, 0x75, 0x6e, 0x25, 0x17, 0x43, 0x39, 0x83, 0x09, 0x4f, 0x04,
+	0x33, 0x56, 0x41, 0xaf, 0xe6, 0x44, 0x76, 0xd6, 0x44, 0xbe, 0x3e, 0xd3, 0xdf, 0x8c, 0xc1, 0x5b,
+	0x80, 0xf0, 0xaa, 0x2d, 0x5d, 0x48, 0xa1, 0x01, 0x9f, 0xa1, 0xf6, 0x48, 0xc4, 0xc3, 0x94, 0x65,
+	0x19, 0x88, 0x04, 0x96, 0xee, 0xba, 0x55, 0xe1, 0x3b, 0x1f, 0x09, 0xad, 0x40, 0xf1, 0x39, 0xda,
+	0x5e, 0x7d, 0x2f, 0xff, 0xad, 0xb6, 0x89, 0xbd, 0x8e, 0x1e, 0x7c, 0x04, 0xa8, 0x4b, 0x21, 0xe1,
+	0xda, 0x80, 0xaa, 0xa6, 0x85, 0x51, 0x63, 0x3a, 0xbd, 0xb9, 0x72, 0x6e, 0x5a, 0xd4, 0xd5, 0x65,
+	0x6f, 0xcc, 0xc5, 0xcc, 0xcd, 0x68, 0x51, 0x57, 0x97, 0xbd, 0x07, 0x96, 0xe8, 0x5e, 0xbd, 0x5f,
+	0x2f, 0x7b, 0x65, 0x8d, 0xaf, 0x11, 0xfe, 0x9e, 0xf2, 0x13, 0x58, 0x63, 0x73, 0x60, 0x7f, 0x50,
+	0x2e, 0xf7, 0x1f, 0xf7, 0x56, 0x96, 0xef, 0xae, 0xc9, 0x3f, 0x0f, 0xfd, 0x4d, 0x85, 0xee, 0xa6,
+	0xa2, 0xa6, 0x5b, 0xfb, 0xc9, 0x67, 0x00, 0x00, 0x00, 0xff, 0xff, 0x64, 0x57, 0xf5, 0xc7, 0x7e,
+	0x02, 0x00, 0x00,
 }

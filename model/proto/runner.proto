@@ -1,23 +1,24 @@
 syntax = "proto3";
 
 import "github.com/cohix/simplcrypto/proto/message.proto";
+import "github.com/cohix/simplcrypto/proto/keypair.proto";
 
 package taask.server.model;
 option go_package = "github.com/taask/taask-server/model";
 
+message AuthRunnerRequest {
+	simpl.crypto.SerializablePubKey PubKey = 1;
+	simpl.crypto.Signature JoinCodeSignature = 2;
+}
+
+message AuthRunnerResponse {
+	simpl.crypto.Message EncChallenge = 1;
+	simpl.crypto.Message EncChallengeKey = 2;
+}
+
 message RegisterRunnerRequest {
 	string UUID = 1;
-	string Type = 2;
-	string PubKey = 3;
-	simpl.crypto.Signature JoinCodeSignature = 4;
-	repeated string Tags = 5;
-}
-
-message RegisterRunnerResponse {
-	string EncChallenge = 1;
-	simpl.crypto.Message EncGlobalKey = 2;
-}
-
-message StreamTasksRequest {
-	simpl.crypto.Signature ChallengeSignature = 1;
+	string Kind = 2;
+	repeated string Tags = 3;
+	simpl.crypto.Signature ChallengeSignature = 4;
 }
