@@ -9,34 +9,34 @@ import (
 
 // Memory is the default, in-memory storage option for persisting tasks
 type Memory struct {
-	tasks map[string]model.Task
+	tasks map[string]*model.Task
 }
 
 // NewMemory creates a new in-memory store
 func NewMemory() *Memory {
 	return &Memory{
-		tasks: make(map[string]model.Task),
+		tasks: make(map[string]*model.Task),
 	}
 }
 
 // Add adds a task to storage
-func (sm *Memory) Add(task *model.Task) error {
+func (sm *Memory) Add(task model.Task) error {
 	if _, ok := sm.tasks[task.UUID]; ok {
 		return errors.Wrap(fmt.Errorf("task with uuid %s already exists", task.UUID), "failed to add task to map")
 	}
 
-	sm.tasks[task.UUID] = *task
+	sm.tasks[task.UUID] = &task
 
 	return nil
 }
 
 // Update updates a task in storage (task is matched on UUID and replaced)
-func (sm *Memory) Update(task *model.Task) error {
+func (sm *Memory) Update(task model.Task) error {
 	if _, ok := sm.tasks[task.UUID]; !ok {
 		return errors.Wrap(fmt.Errorf("task with uuid %s does not exist", task.UUID), "failed to update task")
 	}
 
-	sm.tasks[task.UUID] = *task
+	sm.tasks[task.UUID] = &task
 
 	return nil
 }
@@ -48,8 +48,8 @@ func (sm *Memory) Get(uuid string) (*model.Task, error) {
 		return nil, errors.Wrap(fmt.Errorf("task with uuid %s does not exist", uuid), "failed to get task")
 	}
 
-	// maybe make a copy first?
-	return &task, nil
+	taskCopy := *task
+	return &taskCopy, nil
 }
 
 // Delete deletes a task by UUID

@@ -64,12 +64,20 @@ func (rs *RunnerService) RegisterRunner(req *model.RegisterRunnerRequest, stream
 
 	defer rs.Manager.UnregisterRunner(runner)
 
+	log.LogInfo(fmt.Sprintf("runner %s ready to receive tasks", runner.UUID))
+
 	for {
 		task := <-tasksChan
+
+		log.LogInfo(fmt.Sprintf("runner %s handling task %s", runner.UUID, task.UUID))
 
 		if err := stream.Send(task); err != nil {
 			log.LogError(errors.Wrap(err, "failed to stream.Send"))
 			break
+		}
+
+		if err := rs.Manager.UpdateTask(&model.TaskUpdate{UUID: task.UUID, Status: model.TaskStatusQueued}); err != nil {
+			log.LogError(errors.Wrap(err, "failed to UpdateTask status to queued"))
 		}
 	}
 
@@ -78,7 +86,7 @@ func (rs *RunnerService) RegisterRunner(req *model.RegisterRunnerRequest, stream
 
 // UpdateTask handles update task calls
 func (rs *RunnerService) UpdateTask(ctx context.Context, req *model.TaskUpdate) (*Empty, error) {
-	defer log.LogTrace(fmt.Sprintf("UpdateTask task %s", req.UUID))
+	defer log.LogTrace(fmt.Sprintf("UpdateTask task %s", req.UUID))()
 
 	if err := rs.Manager.UpdateTask(req); err != nil {
 		log.LogError(errors.Wrap(err, "failed to UpdateTask"))

@@ -60,18 +60,18 @@ func (m *Manager) ScheduleTask(task *model.Task) (string, error) {
 	task.UUID = model.NewTaskUUID()
 	task.Status = model.TaskStatusWaiting
 
-	if err := m.storage.Add(task); err != nil {
+	if err := m.storage.Add(*task); err != nil {
 		return "", errors.Wrap(err, "failed to storage.Add")
 	}
 
-	go func(storage storage.Manager) {
+	go func() {
 		m.scheduler.ScheduleTask(task)
 
 		task.Status = model.TaskStatusQueued
-		if err := storage.Update(task); err != nil {
+		if err := m.storage.Update(*task); err != nil {
 			log.LogError(errors.Wrap(err, "failed to storage.Update"))
 		}
-	}(m.storage)
+	}()
 
 	return task.UUID, nil
 }
@@ -89,7 +89,12 @@ func (m *Manager) UpdateTask(update *model.TaskUpdate) error {
 		task.EncResultSymKey = update.EncResultSymKey
 	}
 
-	return m.storage.Update(task)
+	return m.storage.Update(*task)
+}
+
+// GetTask gets a task from storage
+func (m *Manager) GetTask(uuid string) (*model.Task, error) {
+	return m.storage.Get(uuid)
 }
 
 // JoinCode returns the runner join code
