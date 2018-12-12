@@ -2,6 +2,7 @@ package update
 
 import (
 	"fmt"
+	"sync"
 
 	log "github.com/cohix/simplog"
 	"github.com/pkg/errors"
@@ -13,6 +14,7 @@ import (
 type Manager struct {
 	storage   storage.Manager
 	listeners map[string]*taskListener
+	lock      *sync.Mutex
 }
 
 type taskListener struct {
@@ -24,6 +26,7 @@ func NewManager(storage storage.Manager) *Manager {
 	return &Manager{
 		storage:   storage,
 		listeners: make(map[string]*taskListener),
+		lock:      &sync.Mutex{},
 	}
 }
 
@@ -70,6 +73,9 @@ func (m *Manager) UpdateTask(update *model.TaskUpdate) {
 
 // GetListener gets a channel to listen to task updates
 func (m *Manager) GetListener(taskUUID string) chan model.Task {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
 	var listener *taskListener
 
 	if existing, ok := m.listeners[taskUUID]; ok {
@@ -93,6 +99,9 @@ func (m *Manager) GetListener(taskUUID string) chan model.Task {
 }
 
 func (m *Manager) updateListeners(task *model.Task) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+
 	listener, ok := m.listeners[task.UUID]
 	if !ok {
 		return

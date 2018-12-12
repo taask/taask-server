@@ -2,9 +2,10 @@ package schedule
 
 import (
 	"container/list"
-	"errors"
 	"fmt"
 	"sync"
+
+	"github.com/pkg/errors"
 
 	log "github.com/cohix/simplog"
 
@@ -32,6 +33,9 @@ type Manager struct {
 	// Delinquient tasks that need to be retried
 	retrying map[string]*RetryTaskWorker
 
+	// A mutex to ensure the retry workers are kept thread safe
+	retryLock *sync.Mutex
+
 	// updater allows the scheduler to report on updates to the system
 	updater *update.Manager
 }
@@ -44,6 +48,7 @@ func NewManager(updater *update.Manager) *Manager {
 		queued:       list.New(),
 		queueLock:    &sync.Mutex{},
 		retrying:     make(map[string]*RetryTaskWorker),
+		retryLock:    &sync.Mutex{},
 		updater:      updater,
 	}
 }
@@ -70,7 +75,7 @@ func (m *Manager) Start() {
 
 		runner, err := runnerPool.nextRunner()
 		if err != nil {
-			log.LogWarn(fmt.Sprintf("schedule task %s: no runners of Kind %s registered", nextTask.UUID, nextTask.Kind))
+			log.LogWarn(errors.Wrap(err, fmt.Sprintf("schedule task %s: no runners of Kind %s available", nextTask.UUID, nextTask.Kind)).Error())
 			m.StartRetryWorker(nextTask)
 			continue
 		}

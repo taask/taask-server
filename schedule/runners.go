@@ -2,6 +2,7 @@ package schedule
 
 import (
 	"container/list"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -99,6 +100,10 @@ func (rp *runnerPool) nextRunner() (*model.Runner, error) {
 
 	tracker := trackerElement.Value.(*runnerLoad)
 
+	if tracker.AssignedCount >= 10 {
+		return nil, errors.New("runner capacity reached")
+	}
+
 	runner := rp.runners[tracker.UUID]
 
 	tracker.AssignedCount++
@@ -124,7 +129,7 @@ func (rp *runnerPool) runnerCompletedTask(runnerUUID string) {
 	rp.poolLock.Lock()
 	defer rp.poolLock.Unlock()
 
-	for e := rp.tracker.Back(); e != nil; e = e.Next() {
+	for e := rp.tracker.Back(); e != nil; e = e.Prev() {
 		tracker := e.Value.(*runnerLoad)
 
 		if tracker.UUID == runnerUUID {
@@ -140,7 +145,7 @@ func (rp *runnerPool) rebalance(elem *list.Element, newVal int) {
 		return
 	}
 
-	for e := rp.tracker.Back(); e != nil; e = e.Next() {
+	for e := rp.tracker.Back(); e != nil; e = e.Prev() {
 		if e == elem {
 			break
 		}
@@ -155,7 +160,7 @@ func (rp *runnerPool) rebalance(elem *list.Element, newVal int) {
 }
 
 func (rp *runnerPool) removeTracker(uuid string) {
-	for e := rp.tracker.Back(); e != nil; e = e.Next() {
+	for e := rp.tracker.Back(); e != nil; e = e.Prev() {
 		tracker := e.Value.(*runnerLoad)
 
 		if tracker.UUID == uuid {
