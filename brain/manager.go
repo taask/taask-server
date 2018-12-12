@@ -1,10 +1,13 @@
 package brain
 
 import (
+	"net/http"
+
 	"github.com/cohix/simplcrypto"
 	log "github.com/cohix/simplog"
 	"github.com/pkg/errors"
 	"github.com/taask/taask-server/auth"
+	"github.com/taask/taask-server/metrics"
 	"github.com/taask/taask-server/model"
 	"github.com/taask/taask-server/model/validator"
 	"github.com/taask/taask-server/schedule"
@@ -18,11 +21,19 @@ type Manager struct {
 	storage    storage.Manager
 	runnerAuth *auth.RunnerAuthManager
 	Updater    *update.Manager
+
+	metrics *metrics.Manager
 }
 
 // NewManager creates a new manager
 func NewManager(joinCode string, storage storage.Manager) *Manager {
-	updater := update.NewManager(storage)
+	metrics, err := metrics.NewManager()
+	if err != nil {
+		log.LogError(errors.Wrap(err, "failed to metrics.NewManager"))
+		return nil
+	}
+
+	updater := update.NewManager(storage, metrics)
 
 	scheduler := schedule.NewManager(updater)
 	go scheduler.Start()
@@ -34,6 +45,7 @@ func NewManager(joinCode string, storage storage.Manager) *Manager {
 		storage:    storage,
 		runnerAuth: runnerAuth,
 		Updater:    updater,
+		metrics:    metrics,
 	}
 }
 
@@ -68,11 +80,14 @@ func (m *Manager) ScheduleTask(task *model.Task) (string, error) {
 	}
 
 	task.UUID = model.NewTaskUUID()
-	task.Status = model.TaskStatusWaiting
+	task.Status = "" // clear this in case it was set
 
 	if err := m.storage.Add(*task); err != nil {
 		return "", errors.Wrap(err, "failed to storage.Add")
 	}
+
+	// we do a manual update to waiting to ensure the metrics catch the new task
+	go m.Updater.UpdateTask(&model.TaskUpdate{UUID: task.UUID, Status: model.TaskStatusWaiting})
 
 	go func() {
 		m.scheduler.ScheduleTask(task)
@@ -94,4 +109,9 @@ func (m *Manager) GetTask(uuid string) (*model.Task, error) {
 // JoinCode returns the runner join code
 func (m *Manager) JoinCode() string {
 	return m.runnerAuth.JoinCode
+}
+
+// MetricsHandler returns the http handler for metrics scraping
+func (m *Manager) MetricsHandler() http.Handler {
+	return m.metrics.Handler()
 }
