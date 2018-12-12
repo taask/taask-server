@@ -11,10 +11,12 @@ message Task {
 	string Kind = 2;
 	simpl.crypto.SerializablePubKey ResultPubKey = 3;
 	bytes Body = 4;
-	string status = 5;
+	string Status = 5;
 	repeated string Annotations = 6;
 	simpl.crypto.Message EncResult = 7;
 	simpl.crypto.Message EncResultSymKey = 8;
+	string RunnerUUID = 9;
+	int32 RetrySeconds = 10;
 }
 
 message QueueTaskResponse {
@@ -36,4 +38,6 @@ message TaskUpdate {
 	string status = 2;
 	simpl.crypto.Message EncResult = 3;
 	simpl.crypto.Message EncResultSymKey = 4;
+	string RunnerUUID = 5;
+	int32 RetrySeconds = 6;
 }

@@ -8,9 +8,11 @@ import (
 )
 
 var includeDebug bool
+var includeTrace bool
 
 func init() {
 	_, includeDebug = flag.CheckFlag("debug")
+	_, includeTrace = flag.CheckFlag("trace")
 }
 
 type logMessage struct {
@@ -44,8 +46,12 @@ func LogDebug(msg string) {
 
 // LogTrace logs a function call and returns a function to be deferred marking the end of the function
 func LogTrace(name string) func() {
-	LogInfo(fmt.Sprintf("[trace] %s began", name))
+	if includeTrace {
+		LogInfo(fmt.Sprintf("[trace] %s began", name))
+	}
 	return func() {
-		LogInfo(fmt.Sprintf("[trace] %s completed", name))
+		if includeTrace {
+			LogInfo(fmt.Sprintf("[trace] %s completed", name))
+		}
 	}
 }

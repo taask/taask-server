@@ -9,6 +9,7 @@ import (
 	"github.com/taask/taask-server/model/validator"
 	"github.com/taask/taask-server/schedule"
 	"github.com/taask/taask-server/storage"
+	"github.com/taask/taask-server/update"
 )
 
 // Manager is the facade for the subsystem managers (schedule, storage, update, auth)
@@ -16,14 +17,23 @@ type Manager struct {
 	scheduler  *schedule.Manager
 	storage    storage.Manager
 	runnerAuth *auth.RunnerAuthManager
+	Updater    *update.Manager
 }
 
 // NewManager creates a new manager
-func NewManager(scheduler *schedule.Manager, storage storage.Manager, runnerAuth *auth.RunnerAuthManager) *Manager {
+func NewManager(joinCode string, storage storage.Manager) *Manager {
+	updater := update.NewManager(storage)
+
+	scheduler := schedule.NewManager(updater)
+	go scheduler.Start()
+
+	runnerAuth := auth.NewRunnerAuthManager(joinCode)
+
 	return &Manager{
 		scheduler:  scheduler,
 		storage:    storage,
 		runnerAuth: runnerAuth,
+		Updater:    updater,
 	}
 }
 
@@ -66,30 +76,14 @@ func (m *Manager) ScheduleTask(task *model.Task) (string, error) {
 
 	go func() {
 		m.scheduler.ScheduleTask(task)
-
-		task.Status = model.TaskStatusQueued
-		if err := m.storage.Update(*task); err != nil {
-			log.LogError(errors.Wrap(err, "failed to storage.Update"))
-		}
 	}()
 
 	return task.UUID, nil
 }
 
-// UpdateTask updates a task
-func (m *Manager) UpdateTask(update *model.TaskUpdate) error {
-	task, err := m.storage.Get(update.UUID)
-	if err != nil {
-		return errors.Wrap(err, "failed to storage.Get")
-	}
-
-	task.Status = update.Status
-	if update.EncResult != nil {
-		task.EncResult = update.EncResult
-		task.EncResultSymKey = update.EncResultSymKey
-	}
-
-	return m.storage.Update(*task)
+// ScheduleTaskRetry schedules a task to be retried
+func (m *Manager) ScheduleTaskRetry(task *model.Task) {
+	m.scheduler.StartRetryWorker(task)
 }
 
 // GetTask gets a task from storage

@@ -73,11 +73,10 @@ func (rs *RunnerService) RegisterRunner(req *model.RegisterRunnerRequest, stream
 
 		if err := stream.Send(task); err != nil {
 			log.LogError(errors.Wrap(err, "failed to stream.Send"))
-			break
-		}
 
-		if err := rs.Manager.UpdateTask(&model.TaskUpdate{UUID: task.UUID, Status: model.TaskStatusQueued}); err != nil {
-			log.LogError(errors.Wrap(err, "failed to UpdateTask status to queued"))
+			rs.Manager.ScheduleTaskRetry(task)
+
+			break
 		}
 	}
 
@@ -88,10 +87,7 @@ func (rs *RunnerService) RegisterRunner(req *model.RegisterRunnerRequest, stream
 func (rs *RunnerService) UpdateTask(ctx context.Context, req *model.TaskUpdate) (*Empty, error) {
 	defer log.LogTrace(fmt.Sprintf("UpdateTask task %s", req.UUID))()
 
-	if err := rs.Manager.UpdateTask(req); err != nil {
-		log.LogError(errors.Wrap(err, "failed to UpdateTask"))
-		return nil, err
-	}
+	go rs.Manager.Updater.UpdateTask(req)
 
 	return &Empty{}, nil
 }

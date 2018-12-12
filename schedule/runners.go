@@ -107,6 +107,34 @@ func (rp *runnerPool) nextRunner() (*model.Runner, error) {
 	return runner, nil
 }
 
+func (rp *runnerPool) listenForCompletedTask(updateChan chan model.Task) {
+	for {
+		task := <-updateChan
+
+		if task.Status == model.TaskStatusCompleted || task.Status == model.TaskStatusFailed || task.Status == model.TaskStatusRetrying {
+			log.LogInfo(fmt.Sprintf("runner %s completed task %s, updating runner tracker", task.RunnerUUID, task.UUID))
+
+			rp.runnerCompletedTask(task.RunnerUUID)
+			break
+		}
+	}
+}
+
+func (rp *runnerPool) runnerCompletedTask(runnerUUID string) {
+	rp.poolLock.Lock()
+	defer rp.poolLock.Unlock()
+
+	for e := rp.tracker.Back(); e != nil; e = e.Next() {
+		tracker := e.Value.(*runnerLoad)
+
+		if tracker.UUID == runnerUUID {
+			tracker.AssignedCount--
+			rp.rebalance(e, tracker.AssignedCount)
+			return
+		}
+	}
+}
+
 func (rp *runnerPool) rebalance(elem *list.Element, newVal int) {
 	if rp.tracker.Len() == 1 {
 		return
@@ -120,7 +148,7 @@ func (rp *runnerPool) rebalance(elem *list.Element, newVal int) {
 		tracker := e.Value.(*runnerLoad)
 
 		if newVal >= tracker.AssignedCount {
-			rp.tracker.MoveBefore(elem, e)
+			rp.tracker.MoveAfter(elem, e)
 			break
 		}
 	}

@@ -4,7 +4,6 @@ import (
 	log "github.com/cohix/simplog"
 	"github.com/taask/taask-server/auth"
 	"github.com/taask/taask-server/brain"
-	"github.com/taask/taask-server/schedule"
 	"github.com/taask/taask-server/storage"
 )
 
@@ -12,13 +11,9 @@ import (
 func Bootstrap() *brain.Manager {
 	defer log.LogTrace("Bootstrap")()
 
-	scheduler := schedule.NewManager()
-	go scheduler.Start()
-
 	joinCode := auth.GenerateJoinCode()
-	runnerAuthManager := auth.NewRunnerAuthManager(joinCode)
 
-	brain := brain.NewManager(scheduler, storage.NewMemory(), runnerAuthManager)
+	brain := brain.NewManager(joinCode, storage.NewMemory())
 
 	return brain
 }

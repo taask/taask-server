@@ -4,10 +4,12 @@ import (
 	"container/list"
 	"errors"
 	"fmt"
+	"sync"
 
 	log "github.com/cohix/simplog"
 
 	"github.com/taask/taask-server/model"
+	"github.com/taask/taask-server/update"
 )
 
 // ErrorNoRunnersRegistered is returned when a task is scheduled to a Kind that has no runners
@@ -24,17 +26,25 @@ type Manager struct {
 	// Tasks waiting to be assigned to a runner
 	queued *list.List
 
+	// A mutex to ensure the queue is kept thread safe
+	queueLock *sync.Mutex
+
 	// Delinquient tasks that need to be retried
-	retrying []*RetryTaskWorker
+	retrying map[string]*RetryTaskWorker
+
+	// updater allows the scheduler to report on updates to the system
+	updater *update.Manager
 }
 
 // NewManager creates a new ScheduleManager
-func NewManager() *Manager {
+func NewManager(updater *update.Manager) *Manager {
 	return &Manager{
 		runnerPools:  make(map[string]*runnerPool),
 		scheduleChan: make(chan *model.Task, 256),
 		queued:       list.New(),
-		retrying:     []*RetryTaskWorker{},
+		queueLock:    &sync.Mutex{},
+		retrying:     make(map[string]*RetryTaskWorker),
+		updater:      updater,
 	}
 }
 
@@ -54,18 +64,19 @@ func (m *Manager) Start() {
 		runnerPool, ok := m.runnerPools[nextTask.Kind]
 		if !ok {
 			log.LogWarn(fmt.Sprintf("schedule task %s: no runners of Kind %s registered", nextTask.UUID, nextTask.Kind))
-			m.requeueTask(nextTask)
+			m.StartRetryWorker(nextTask)
 			continue
 		}
 
 		runner, err := runnerPool.nextRunner()
 		if err != nil {
 			log.LogWarn(fmt.Sprintf("schedule task %s: no runners of Kind %s registered", nextTask.UUID, nextTask.Kind))
-			m.requeueTask(nextTask)
+			m.StartRetryWorker(nextTask)
 			continue
-		} else {
-			log.LogInfo(fmt.Sprintf("scheduling task %s to runner %s", nextTask.UUID, runner.UUID))
 		}
+
+		go m.updater.UpdateTask(&model.TaskUpdate{UUID: nextTask.UUID, Status: model.TaskStatusQueued, RunnerUUID: runner.UUID})
+		go runnerPool.listenForCompletedTask(m.updater.GetListener(nextTask.UUID))
 
 		runner.TaskChannel <- nextTask
 	}
@@ -82,6 +93,9 @@ func (m *Manager) ScheduleTask(task *model.Task) {
 func (m *Manager) queueNewTaskIfExists() {
 	select {
 	case task := <-m.scheduleChan:
+		m.queueLock.Lock()
+		defer m.queueLock.Unlock()
+
 		m.queued.PushBack(task)
 	default:
 		return
@@ -90,10 +104,17 @@ func (m *Manager) queueNewTaskIfExists() {
 
 func (m *Manager) queueNewTaskUntilExists() {
 	task := <-m.scheduleChan
+
+	m.queueLock.Lock()
+	defer m.queueLock.Unlock()
+
 	m.queued.PushBack(task)
 }
 
 func (m *Manager) nextQueued() *model.Task {
+	m.queueLock.Lock()
+	defer m.queueLock.Unlock()
+
 	if m.queued.Len() > 0 {
 		task := m.queued.Remove(m.queued.Front()).(*model.Task)
 		return task
@@ -103,6 +124,16 @@ func (m *Manager) nextQueued() *model.Task {
 }
 
 func (m *Manager) requeueTask(task *model.Task) {
+	m.queueLock.Lock()
+	defer m.queueLock.Unlock()
+
+	log.LogInfo(fmt.Sprintf("requeing task %s", task.UUID))
+
+	if m.queued.Len() == 0 {
+		m.ScheduleTask(task) // if there's nothing, then the run loop will be waiting for a new scheduled task before continuing
+		return
+	}
+
 	e := m.queued.Front()
 	for i := 0; i < m.queued.Len()/3 && e.Next() != nil; i++ {
 		e = e.Next()
