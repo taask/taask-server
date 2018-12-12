@@ -147,15 +147,19 @@ func (rp *runnerPool) rebalance(elem *list.Element, newVal int) {
 
 	for e := rp.tracker.Back(); e != nil; e = e.Prev() {
 		if e == elem {
-			break
+			return
 		}
 
 		tracker := e.Value.(*runnerLoad)
 
 		if newVal >= tracker.AssignedCount {
 			rp.tracker.MoveAfter(elem, e)
-			break
+			return
 		}
+	}
+
+	if rp.tracker.Front() != elem {
+		rp.tracker.MoveBefore(elem, rp.tracker.Front())
 	}
 }
 

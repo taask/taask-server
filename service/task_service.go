@@ -57,24 +57,35 @@ func (ts TaskService) CheckTask(req *model.CheckTaskRequest, stream TaskService_
 		return errors.Wrap(err, "failed to GetTask")
 	}
 
-	update := &model.TaskUpdate{
-		UUID:   task.UUID,
-		Status: task.Status,
-	}
+	listener := ts.Manager.Updater.GetListener(req.UUID)
 
-	if task.EncResult != nil {
-		update.EncResult = task.EncResult
-		update.EncResultSymKey = task.EncResultSymKey
-	}
+	for {
+		update := &model.TaskUpdate{
+			UUID:   task.UUID,
+			Status: task.Status,
+		}
 
-	resp := &model.CheckTaskResponse{
-		Status: task.Status,
-		Result: update,
-	}
+		if task.EncResult != nil {
+			update.EncResult = task.EncResult
+			update.EncResultSymKey = task.EncResultSymKey
+		}
 
-	if err := stream.Send(resp); err != nil {
-		log.LogError(errors.Wrap(err, "failed to Send"))
-		return err
+		resp := &model.CheckTaskResponse{
+			Status: task.Status,
+			Result: update,
+		}
+
+		if err := stream.Send(resp); err != nil {
+			log.LogError(errors.Wrap(err, "failed to Send"))
+			return err
+		}
+
+		if resp.Status == model.TaskStatusCompleted || resp.Status == model.TaskStatusFailed {
+			break
+		}
+
+		updatedTask := <-listener
+		task = &updatedTask
 	}
 
 	return nil
