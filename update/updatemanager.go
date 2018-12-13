@@ -6,6 +6,7 @@ import (
 
 	log "github.com/cohix/simplog"
 	"github.com/pkg/errors"
+	"github.com/taask/taask-server/metrics"
 	"github.com/taask/taask-server/model"
 	"github.com/taask/taask-server/storage"
 )
@@ -15,6 +16,7 @@ type Manager struct {
 	storage   storage.Manager
 	listeners map[string]*taskListener
 	lock      *sync.Mutex
+	metrics   *metrics.Manager
 }
 
 type taskListener struct {
@@ -22,11 +24,12 @@ type taskListener struct {
 }
 
 // NewManager creates an update manager
-func NewManager(storage storage.Manager) *Manager {
+func NewManager(storage storage.Manager, metrics *metrics.Manager) *Manager {
 	return &Manager{
 		storage:   storage,
 		listeners: make(map[string]*taskListener),
 		lock:      &sync.Mutex{},
+		metrics:   metrics,
 	}
 }
 
@@ -42,6 +45,8 @@ func (m *Manager) UpdateTask(update *model.TaskUpdate) {
 		log.LogError(errors.Wrap(err, "failed to storage.Get"))
 		return
 	}
+
+	go m.metrics.UpdateTask(*task, update)
 
 	if update.Status != "" && task.Status != update.Status {
 		log.LogInfo(fmt.Sprintf("task %s status updated (%s -> %s)", task.UUID, task.Status, update.Status))
