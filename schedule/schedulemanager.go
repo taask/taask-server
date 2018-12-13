@@ -73,7 +73,7 @@ func (m *Manager) Start() {
 			continue
 		}
 
-		runner, err := runnerPool.nextRunner()
+		runner, err := runnerPool.assignTaskToNextRunner(nextTask)
 		if err != nil {
 			log.LogWarn(errors.Wrap(err, fmt.Sprintf("schedule task %s: no runners of Kind %s available", nextTask.UUID, nextTask.Kind)).Error())
 			m.StartRetryWorker(nextTask)
