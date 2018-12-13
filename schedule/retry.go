@@ -8,19 +8,21 @@ import (
 
 // RetryTaskWorker manager the backoff retries of a delenquient task
 type RetryTaskWorker struct {
-	task *model.Task
+	task    *model.Task
+	nowChan chan bool
 }
 
 // StartRetryWorker starts a retry worker
 func (sm *Manager) StartRetryWorker(task *model.Task) {
 	if task.RetrySeconds == 0 {
 		task.RetrySeconds = 1
-	} else if task.RetrySeconds < 32 {
+	} else if task.RetrySeconds < 16 {
 		task.RetrySeconds *= 2
 	}
 
 	worker := &RetryTaskWorker{
-		task: task,
+		task:    task,
+		nowChan: make(chan bool),
 	}
 
 	sm.retryLock.Lock()
@@ -30,12 +32,23 @@ func (sm *Manager) StartRetryWorker(task *model.Task) {
 	sm.updater.UpdateTask(&model.TaskUpdate{UUID: task.UUID, Status: model.TaskStatusRetrying, RetrySeconds: task.RetrySeconds})
 
 	go func() {
-		<-time.After(time.Second * time.Duration(worker.task.RetrySeconds))
+		select {
+		case <-time.After(time.Second * time.Duration(worker.task.RetrySeconds)):
+			// run the task
+		case <-worker.nowChan:
+			// ignore the timer and run the task
+		}
 
 		sm.requeueTask(task)
 
 		sm.retryLock.Lock()
 		delete(sm.retrying, task.UUID)
 		sm.retryLock.Unlock()
+	}()
+}
+
+func (rw *RetryTaskWorker) retryNow() {
+	go func() {
+		rw.nowChan <- true
 	}()
 }

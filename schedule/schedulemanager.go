@@ -73,15 +73,17 @@ func (m *Manager) Start() {
 			continue
 		}
 
-		runner, err := runnerPool.nextRunner()
+		runner, err := runnerPool.assignTaskToNextRunner(nextTask)
 		if err != nil {
 			log.LogWarn(errors.Wrap(err, fmt.Sprintf("schedule task %s: no runners of Kind %s available", nextTask.UUID, nextTask.Kind)).Error())
 			m.StartRetryWorker(nextTask)
 			continue
 		}
 
+		listener := m.updater.GetListener(nextTask.UUID)
+		go runnerPool.listenForCompletedTask(listener)
+
 		go m.updater.UpdateTask(&model.TaskUpdate{UUID: nextTask.UUID, Status: model.TaskStatusQueued, RunnerUUID: runner.UUID})
-		go runnerPool.listenForCompletedTask(m.updater.GetListener(nextTask.UUID))
 
 		runner.TaskChannel <- nextTask
 	}
@@ -145,4 +147,17 @@ func (m *Manager) requeueTask(task *model.Task) {
 	}
 
 	m.queued.InsertAfter(task, e)
+}
+
+func (m *Manager) forceRetry() {
+	m.retryLock.Lock()
+	defer m.retryLock.Unlock()
+
+	// range over the map to get a "random" one
+	for uuid, worker := range m.retrying {
+		log.LogInfo(fmt.Sprintf("releasing retry worker for task %s", uuid))
+
+		go worker.retryNow()
+		break
+	}
 }
