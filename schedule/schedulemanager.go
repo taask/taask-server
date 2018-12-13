@@ -16,6 +16,9 @@ import (
 // ErrorNoRunnersRegistered is returned when a task is scheduled to a Kind that has no runners
 var ErrorNoRunnersRegistered = errors.New("no runners registered")
 
+// ErrorCapacityReached is returned when a runner is at capacity
+var ErrorCapacityReached = errors.New("runner capacity reached")
+
 // Manager manages the scheduling of tasks to runners
 type Manager struct {
 	// A map of runner Kinds to pools of runners
@@ -80,10 +83,10 @@ func (m *Manager) Start() {
 			continue
 		}
 
+		m.updater.UpdateTask(&model.TaskUpdate{UUID: nextTask.UUID, Status: model.TaskStatusQueued, RunnerUUID: runner.UUID})
+
 		listener := m.updater.GetListener(nextTask.UUID)
 		go runnerPool.listenForCompletedTask(listener)
-
-		go m.updater.UpdateTask(&model.TaskUpdate{UUID: nextTask.UUID, Status: model.TaskStatusQueued, RunnerUUID: runner.UUID})
 
 		runner.TaskChannel <- nextTask
 	}

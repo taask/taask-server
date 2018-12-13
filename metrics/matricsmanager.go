@@ -92,7 +92,7 @@ func (m *Manager) UpdateTask(task model.Task, update *model.TaskUpdate) {
 	// if update.RunnerUUID != "" && task.RunnerUUID != update.RunnerUUID {
 	// 	log.LogInfo("updating runner metric")
 
-	// 	m.metricMap[update.Status].With(prometheus.Labels{metricsUUIDLabel: task.UUID, metricsRunnerLabel: update.RunnerUUID, metricsKindLabel: task.Kind}).Inc()
+	// 	m.metricMap[update.Status].With(prometheus.Labels{metricsRunnerLabel: update.RunnerUUID, metricsKindLabel: task.Kind}).Inc()
 	// }
 
 	// if update.RetrySeconds != 0 && task.RetrySeconds != update.RetrySeconds {
@@ -104,17 +104,25 @@ func (m *Manager) UpdateTask(task model.Task, update *model.TaskUpdate) {
 func (m *Manager) updateStatusMetrics(task model.Task, update *model.TaskUpdate) {
 	if task.Status != "" {
 		old := m.metricMap[task.Status]
-		old.With(prometheus.Labels{metricsUUIDLabel: task.UUID, metricsRunnerLabel: task.RunnerUUID, metricsKindLabel: task.Kind}).Dec()
+		old.With(prometheus.Labels{metricsRunnerLabel: task.RunnerUUID, metricsKindLabel: task.Kind}).Dec()
 	} else if task.Status == "" && update.Status == model.TaskStatusWaiting {
 		// we only want to increment active on the task's first update, which will always be nothing->waiting
-		m.metricMap["active"].With(prometheus.Labels{metricsUUIDLabel: task.UUID, metricsRunnerLabel: task.RunnerUUID, metricsKindLabel: task.Kind}).Inc()
+		m.metricMap["active"].With(prometheus.Labels{metricsRunnerLabel: task.RunnerUUID, metricsKindLabel: task.Kind}).Inc()
 	}
 
-	new := m.metricMap[update.Status]
-	new.With(prometheus.Labels{metricsUUIDLabel: task.UUID, metricsRunnerLabel: task.RunnerUUID, metricsKindLabel: task.Kind}).Inc()
+	// if the update is nil, then we just want to decrement the old status
+	if update != nil {
+		new := m.metricMap[update.Status]
+		if update.RunnerUUID != "" {
+			// update the runner label if it's changed
+			new.With(prometheus.Labels{metricsRunnerLabel: update.RunnerUUID, metricsKindLabel: task.Kind}).Inc()
+		} else {
+			new.With(prometheus.Labels{metricsRunnerLabel: task.RunnerUUID, metricsKindLabel: task.Kind}).Inc()
+		}
 
-	if update.Status == model.TaskStatusCompleted || update.Status == model.TaskStatusFailed {
-		m.metricMap["active"].With(prometheus.Labels{metricsUUIDLabel: task.UUID, metricsRunnerLabel: task.RunnerUUID, metricsKindLabel: task.Kind}).Dec()
+		if update.Status == model.TaskStatusCompleted || update.Status == model.TaskStatusFailed {
+			m.metricMap["active"].With(prometheus.Labels{metricsRunnerLabel: task.RunnerUUID, metricsKindLabel: task.Kind}).Dec()
+		}
 	}
 }
 
@@ -123,7 +131,7 @@ func createAndRegisterGuageVecWithName(name string) (*prometheus.GaugeVec, error
 		Namespace: metricsNamespace,
 		Name:      fmt.Sprintf("tasks_%s", name),
 		Help:      fmt.Sprintf("Tasks currently %s", name),
-	}, []string{metricsUUIDLabel, metricsRunnerLabel, metricsKindLabel})
+	}, []string{metricsRunnerLabel, metricsKindLabel})
 
 	if err := prometheus.Register(vec); err != nil {
 		return nil, errors.Wrap(err, "failed to Register")
