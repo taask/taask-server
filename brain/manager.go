@@ -87,7 +87,7 @@ func (m *Manager) ScheduleTask(task *model.Task) (string, error) {
 	}
 
 	// we do a manual update to waiting to ensure the metrics catch the new task
-	go m.Updater.UpdateTask(&model.TaskUpdate{UUID: task.UUID, Status: model.TaskStatusWaiting})
+	m.Updater.UpdateTask(&model.TaskUpdate{UUID: task.UUID, Status: model.TaskStatusWaiting})
 
 	go func() {
 		m.scheduler.ScheduleTask(task)

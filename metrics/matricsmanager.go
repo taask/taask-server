@@ -6,7 +6,6 @@ import (
 
 	"github.com/taask/taask-server/model"
 
-	log "github.com/cohix/simplog"
 	"github.com/pkg/errors"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -105,22 +104,16 @@ func (m *Manager) UpdateTask(task model.Task, update *model.TaskUpdate) {
 func (m *Manager) updateStatusMetrics(task model.Task, update *model.TaskUpdate) {
 	if task.Status != "" {
 		old := m.metricMap[task.Status]
-		log.LogInfo("decrementing " + task.Status)
-
 		old.With(prometheus.Labels{metricsUUIDLabel: task.UUID, metricsRunnerLabel: task.RunnerUUID, metricsKindLabel: task.Kind}).Dec()
 	} else if task.Status == "" && update.Status == model.TaskStatusWaiting {
 		// we only want to increment active on the task's first update, which will always be nothing->waiting
-		log.LogInfo("incrementing active")
 		m.metricMap["active"].With(prometheus.Labels{metricsUUIDLabel: task.UUID, metricsRunnerLabel: task.RunnerUUID, metricsKindLabel: task.Kind}).Inc()
 	}
 
 	new := m.metricMap[update.Status]
-	log.LogInfo("incrementing " + update.Status)
-
 	new.With(prometheus.Labels{metricsUUIDLabel: task.UUID, metricsRunnerLabel: task.RunnerUUID, metricsKindLabel: task.Kind}).Inc()
 
 	if update.Status == model.TaskStatusCompleted || update.Status == model.TaskStatusFailed {
-		log.LogInfo("decrementing active")
 		m.metricMap["active"].With(prometheus.Labels{metricsUUIDLabel: task.UUID, metricsRunnerLabel: task.RunnerUUID, metricsKindLabel: task.Kind}).Dec()
 	}
 }
