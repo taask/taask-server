@@ -134,6 +134,7 @@ func (rp *runnerPool) runnerCompletedTask(runnerUUID string) {
 
 		if tracker.UUID == runnerUUID {
 			tracker.AssignedCount--
+			log.LogInfo(fmt.Sprintf("runner completed task %d -> %d", tracker.AssignedCount+1, tracker.AssignedCount))
 			rp.rebalance(e, tracker.AssignedCount)
 			return
 		}

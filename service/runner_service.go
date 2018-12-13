@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"net"
+	"time"
 
 	log "github.com/cohix/simplog"
 	"github.com/pkg/errors"
@@ -63,18 +64,25 @@ func (rs *RunnerService) RegisterRunner(req *model.RegisterRunnerRequest, stream
 	}
 
 	defer rs.Manager.UnregisterRunner(runner)
+	go startRunnerHeartbeat(tasksChan)
 
 	log.LogInfo(fmt.Sprintf("runner %s ready to receive tasks", runner.UUID))
 
 	for {
 		task := <-tasksChan
 
-		log.LogInfo(fmt.Sprintf("runner %s handling task %s", runner.UUID, task.UUID))
+		if task.UUID != "" {
+			log.LogInfo(fmt.Sprintf("runner %s handling task %s", runner.UUID, task.UUID))
+		} else {
+			log.LogInfo(fmt.Sprintf("sending runner %s heartbeat", runner.UUID))
+		}
 
 		if err := stream.Send(task); err != nil {
 			log.LogError(errors.Wrap(err, "failed to stream.Send"))
 
-			rs.Manager.ScheduleTaskRetry(task)
+			if task.UUID != "" {
+				rs.Manager.ScheduleTaskRetry(task)
+			}
 
 			break
 		}
@@ -90,4 +98,13 @@ func (rs *RunnerService) UpdateTask(ctx context.Context, req *model.TaskUpdate) 
 	go rs.Manager.Updater.UpdateTask(req)
 
 	return &Empty{}, nil
+}
+
+// TODO: find a way to terminate this
+func startRunnerHeartbeat(taskChan chan *model.Task) {
+	for {
+		<-time.After(time.Second * time.Duration(10))
+
+		taskChan <- &model.Task{}
+	}
 }
