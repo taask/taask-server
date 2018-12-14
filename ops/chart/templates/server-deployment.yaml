@@ -1,0 +1,74 @@
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: taask-server
+  labels: &DeploymentLabels
+    metrics/component: taask-server
+spec:
+  selector:
+    matchLabels: *DeploymentLabels
+  replicas: 1
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels: *DeploymentLabels
+    spec:
+      containers:
+      - name: taask-server
+        image: taask/server:{{ .Values.Tag }}
+        command: ["/taask/taask-server"]
+        imagePullPolicy: IfNotPresent
+        # args: []
+        ports:
+        - containerPort: 3687
+        - containerPort: 3688
+        - containerPort: 3689
+        volumeMounts:
+        - mountPath: /taask/config
+          name: taask-config
+      volumes:
+      - name: taask-config
+        hostPath:
+          # directory location on host
+          path: {{ .Values.HomeDir }}/.taask/server/config
+          # this field is optional
+          type: Directory
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: taask-server-ingress
+  labels: &ServiceLabels
+    metrics/service: taask-server
+spec:
+  ports:
+  - name: task
+    port: 3688
+    protocol: TCP
+    nodePort: 30688
+  selector:
+    metrics/component: taask-server
+  type: NodePort
+
+---
+  
+apiVersion: v1
+kind: Service
+metadata:
+  name: taask-server
+  labels: &ServiceLabels
+    metrics/service: taask-server
+spec:
+  ports:
+  - name: metrics
+    port: 3689
+    protocol: TCP
+  - name: runner
+    port: 3687
+    protocol: TCP
+  selector:
+    metrics/component: taask-server
+  type: ClusterIP
