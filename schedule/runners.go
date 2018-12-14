@@ -2,7 +2,6 @@ package schedule
 
 import (
 	"container/list"
-	"errors"
 	"fmt"
 	"sync"
 
@@ -38,7 +37,7 @@ func (m *Manager) UnregisterRunner(runnerKind, uuid string) error {
 		log.LogWarn(fmt.Sprintf("re-queuing %d tasks from unregistered runner %s", len(deadTasks), uuid))
 
 		for i := range deadTasks {
-			m.requeueTask(deadTasks[i])
+			m.StartRetryWorker(deadTasks[i])
 		}
 	}
 
@@ -113,7 +112,7 @@ func (rp *runnerPool) assignTaskToNextRunner(task *model.Task) (*model.Runner, e
 	tracker := trackerElement.Value.(*runnerLoad)
 
 	if tracker.AssignedCount() >= 10 {
-		return nil, errors.New("runner capacity reached")
+		return nil, ErrorCapacityReached
 	}
 
 	runner := rp.runners[tracker.UUID]
@@ -129,8 +128,8 @@ func (rp *runnerPool) listenForCompletedTask(updateChan chan model.Task) {
 	for {
 		task := <-updateChan
 
-		if task.Status == model.TaskStatusCompleted || task.Status == model.TaskStatusFailed || task.Status == model.TaskStatusRetrying {
-			log.LogInfo(fmt.Sprintf("runner %s completed task %s, updating runner tracker", task.RunnerUUID, task.UUID))
+		if task.Status == model.TaskStatusCompleted || task.Status == model.TaskStatusFailed || task.Status == model.TaskStatusRetrying || task.Status == model.TaskStatusQueued {
+			log.LogInfo(fmt.Sprintf("runner %s completed (or dropped) task %s, updating runner tracker", task.RunnerUUID, task.UUID))
 
 			rp.runnerCompletedTask(task.RunnerUUID, task.UUID)
 			break
@@ -147,7 +146,6 @@ func (rp *runnerPool) runnerCompletedTask(runnerUUID, taskUUID string) {
 
 		if tracker.UUID == runnerUUID {
 			delete(tracker.AssignedTasks, taskUUID)
-			log.LogInfo(fmt.Sprintf("runner completed task %d -> %d", tracker.AssignedCount()+1, tracker.AssignedCount()))
 			rp.rebalance(e, tracker.AssignedCount())
 			return
 		}

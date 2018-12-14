@@ -49,7 +49,7 @@ func (rs *RunnerService) AuthRunner(ctx context.Context, req *model.AuthRunnerRe
 func (rs *RunnerService) RegisterRunner(req *model.RegisterRunnerRequest, stream RunnerService_RegisterRunnerServer) error {
 	defer log.LogTrace(fmt.Sprintf("RegisterRunner kind %s", req.Kind))()
 
-	tasksChan := make(chan *model.Task, 10)
+	tasksChan := make(chan *model.Task, 128)
 
 	runner := &model.Runner{
 		UUID:        model.NewRunnerUUID(),

@@ -1,0 +1,4 @@
+ops/
+Makefile
+Gopkg.*
+.dev/

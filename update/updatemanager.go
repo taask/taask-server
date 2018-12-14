@@ -48,32 +48,35 @@ func (m *Manager) UpdateTask(update *model.TaskUpdate) {
 
 	go m.metrics.UpdateTask(*task, update)
 
-	if update.Status != "" && task.Status != update.Status {
-		log.LogInfo(fmt.Sprintf("task %s status updated (%s -> %s)", task.UUID, task.Status, update.Status))
-		task.Status = update.Status
-	}
+	// if update is nil, then we just wanted to update metrics
+	if update != nil {
+		if update.Status != "" && task.Status != update.Status {
+			log.LogInfo(fmt.Sprintf("task %s status updated (%s -> %s)", task.UUID, task.Status, update.Status))
+			task.Status = update.Status
+		}
 
-	if update.RunnerUUID != "" && task.RunnerUUID != update.RunnerUUID {
-		log.LogInfo(fmt.Sprintf("task %s assigned to runner %s", task.UUID, update.RunnerUUID))
-		task.RunnerUUID = update.RunnerUUID
-	}
+		if update.RunnerUUID != "" && task.RunnerUUID != update.RunnerUUID {
+			log.LogInfo(fmt.Sprintf("task %s assigned to runner %s", task.UUID, update.RunnerUUID))
+			task.RunnerUUID = update.RunnerUUID
+		}
 
-	if update.RetrySeconds != 0 && task.RetrySeconds != update.RetrySeconds {
-		log.LogInfo(fmt.Sprintf("task %s set to retry in %d seconds", task.UUID, update.RetrySeconds))
-		task.RetrySeconds = update.RetrySeconds
-	}
+		if update.RetrySeconds != 0 && task.RetrySeconds != update.RetrySeconds {
+			log.LogInfo(fmt.Sprintf("task %s set to retry in %d seconds", task.UUID, update.RetrySeconds))
+			task.RetrySeconds = update.RetrySeconds
+		}
 
-	// TODO: determine if we should block updating this more than once
-	if update.EncResult != nil {
-		task.EncResult = update.EncResult
-		task.EncResultSymKey = update.EncResultSymKey
-	}
+		// TODO: determine if we should block updating this more than once
+		if update.EncResult != nil {
+			task.EncResult = update.EncResult
+			task.EncResultSymKey = update.EncResultSymKey
+		}
 
-	if err := m.storage.Update(*task); err != nil {
-		log.LogError(errors.Wrap(err, "failed to m.storage.Update"))
-	}
+		if err := m.storage.Update(*task); err != nil {
+			log.LogError(errors.Wrap(err, "failed to m.storage.Update"))
+		}
 
-	m.updateListeners(task)
+		m.updateListeners(task)
+	}
 }
 
 // GetListener gets a channel to listen to task updates

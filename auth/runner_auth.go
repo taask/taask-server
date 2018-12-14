@@ -3,10 +3,16 @@ package auth
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 
 	"github.com/cohix/simplcrypto"
+	log "github.com/cohix/simplog"
 	"github.com/pkg/errors"
 	"github.com/taask/taask-server/model"
+)
+
+const (
+	joinCodeWritePath = "/taask/config/joincode"
 )
 
 // RunnerAuthManager manages the auth of runners
@@ -34,6 +40,8 @@ type runnerChallenge struct {
 
 // NewRunnerAuthManager returns a new RunnerAuthManager
 func NewRunnerAuthManager(joinCode string) *RunnerAuthManager {
+	defer writeJoinCode(joinCode)
+
 	return &RunnerAuthManager{
 		JoinCode:               joinCode,
 		usedSignatures:         []*simplcrypto.Signature{},
@@ -114,4 +122,10 @@ func (am *RunnerAuthManager) CheckRunnerChallenge(chalSig *simplcrypto.Signature
 	delete(am.authedRunnerChallenges, chalSig.KID)
 
 	return nil
+}
+
+func writeJoinCode(joinCode string) {
+	if err := ioutil.WriteFile(joinCodeWritePath, []byte(joinCode), 0666); err != nil {
+		log.LogError(errors.Wrap(err, "failed to WriteFile join code"))
+	}
 }
