@@ -72,21 +72,21 @@ func (m *Manager) Start() {
 		runnerPool, ok := m.runnerPools[nextTask.Kind]
 		if !ok {
 			log.LogWarn(fmt.Sprintf("schedule task %s: no runners of Kind %s registered", nextTask.UUID, nextTask.Kind))
-			m.StartRetryWorker(nextTask)
+			m.startRetryWorker(nextTask)
 			continue
 		}
 
 		runner, err := runnerPool.assignTaskToNextRunner(nextTask)
 		if err != nil {
 			log.LogWarn(errors.Wrap(err, fmt.Sprintf("schedule task %s: no runners of Kind %s available", nextTask.UUID, nextTask.Kind)).Error())
-			m.StartRetryWorker(nextTask)
+			m.startRetryWorker(nextTask)
 			continue
 		}
 
 		m.updater.UpdateTask(&model.TaskUpdate{UUID: nextTask.UUID, Status: model.TaskStatusQueued, RunnerUUID: runner.UUID})
 
 		listener := m.updater.GetListener(nextTask.UUID)
-		go runnerPool.listenForCompletedTask(listener)
+		go m.startRunMonitor(nextTask, runnerPool, listener)
 
 		runner.TaskChannel <- nextTask
 	}

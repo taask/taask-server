@@ -55,14 +55,14 @@ func (m *Manager) UpdateTask(update *model.TaskUpdate) {
 			task.Status = update.Status
 		}
 
-		if update.RunnerUUID != "" && task.RunnerUUID != update.RunnerUUID {
+		if update.RunnerUUID != "" && task.Meta.RunnerUUID != update.RunnerUUID {
 			log.LogInfo(fmt.Sprintf("task %s assigned to runner %s", task.UUID, update.RunnerUUID))
-			task.RunnerUUID = update.RunnerUUID
+			task.Meta.RunnerUUID = update.RunnerUUID
 		}
 
-		if update.RetrySeconds != 0 && task.RetrySeconds != update.RetrySeconds {
+		if update.RetrySeconds != 0 && task.Meta.RetrySeconds != update.RetrySeconds {
 			log.LogInfo(fmt.Sprintf("task %s set to retry in %d seconds", task.UUID, update.RetrySeconds))
-			task.RetrySeconds = update.RetrySeconds
+			task.Meta.RetrySeconds = update.RetrySeconds
 		}
 
 		// TODO: determine if we should block updating this more than once

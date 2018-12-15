@@ -26,3 +26,18 @@ const (
 	// retrying is similar to waiting, except there will be a backoff before it is re-queued
 	TaskStatusRetrying = "retrying"
 )
+
+// IsNotStarted is if a task hasn't even tried to run yet (hasn't been assigned a runner)
+func (t *Task) IsNotStarted() bool {
+	return t.Status == TaskStatusWaiting || t.Status == TaskStatusRetrying
+}
+
+// IsRunning is if the task is in the process of being run (has been assigned a runner)
+func (t *Task) IsRunning() bool {
+	return t.Status == TaskStatusQueued || t.Status == TaskStatusRunning
+}
+
+// IsFinished is if the task has run and has a result of some sort
+func (t *Task) IsFinished() bool {
+	return t.Status == TaskStatusCompleted || t.Status == TaskStatusFailed
+}

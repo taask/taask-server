@@ -3,7 +3,7 @@ kind: Deployment
 metadata:
   name: taask-server
   labels: &DeploymentLabels
-    metrics/component: taask-server
+    io.taask/component: taask-server
 spec:
   selector:
     matchLabels: *DeploymentLabels
@@ -34,6 +34,22 @@ spec:
           path: {{ .Values.HomeDir }}/.taask/server/config
           # this field is optional
           type: Directory
+---
+  
+apiVersion: v1
+kind: Service
+metadata:
+  name: taask-server
+  labels:
+    io.taask/service: taask-server
+spec:
+  selector:
+      io.taask/component: taask-server
+  ports:
+  - name: runner
+    port: 3687
+  - name: metrics
+    port: 3689
 
 ---
 
@@ -41,8 +57,8 @@ apiVersion: v1
 kind: Service
 metadata:
   name: taask-server-ingress
-  labels: &ServiceLabels
-    metrics/service: taask-server
+  labels:
+    io.taask/service: taask-server
 spec:
   ports:
   - name: task
@@ -50,25 +66,5 @@ spec:
     protocol: TCP
     nodePort: 30688
   selector:
-    metrics/component: taask-server
+    io.taask/component: taask-server
   type: NodePort
-
----
-  
-apiVersion: v1
-kind: Service
-metadata:
-  name: taask-server
-  labels: &ServiceLabels
-    metrics/service: taask-server
-spec:
-  ports:
-  - name: metrics
-    port: 3689
-    protocol: TCP
-  - name: runner
-    port: 3687
-    protocol: TCP
-  selector:
-    metrics/component: taask-server
-  type: ClusterIP
