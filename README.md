@@ -52,17 +52,17 @@ And optional components:
 ### Server
 The Taask Core server (this project) is the main component of the Taask control plane.
 It is responsible for consuming tasks, tracking their state, and scheduling them onto the compute plane.
-taask-server operates in a "managing partner" cluster. Multiple instances work together to share management tasks.
+taask-server operates in a "managing partner" cluster. Multiple instances work together to share management tasks and remain fault-tolerant.
 Clients can communicate with any instance of taask-server, and the tasks they produce will be distributed across the partners and their runners.
-Runners register themselves with individual instances of taask-server, recieve tasks to be executed, and return their results.
+Runners register themselves with individual instances of taask-server.
 
 ### Runners
-The Taask compute plane is comprised of one or more runners. Runners register themselves with taask-core to make themselves available for tasks.
+The Taask compute plane is comprised of one or more runners. Runners register themselves with taask-server to make themselves available for tasks.
 Runners communicate with taask-server using gRPC, and bi-directionally stream data for optimal performance.
 Tasks are scheduled to runners, they are executed, and the results returned.
 Runners can be written in any language using first-party and third-party runner libraries.
 
-  - [runner-k8s](https://github.com/taask/runner-k8s): Runs tasks as Kubernetes Jobs, using any container image
+  - [runner-k8s](https://github.com/taask/runner-k8s): Runs tasks as Kubernetes Jobs using container images
   - [runner-golang](https://github.com/taask/runner-golang): Go library for developing custom runners
 
 ### Child Runners
