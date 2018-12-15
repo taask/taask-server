@@ -41,7 +41,7 @@ And optional components:
 |                   |           |             |           |             |
 |                   |           |             |           |             |
 |     Clients  <----|------> Server <---------|---->    Runners         |
-| (produce tasks)   |    (control layer)      |     (compute layer)     |
+| (produce tasks)   |    (control plane)      |     (compute plane)     |
 | (consume results) |  [multiple partners]    |  [scales automatically] |
 |                   |                         |                         |
 |                   |                         |                         |
@@ -57,7 +57,7 @@ Clients can communicate with any instance of taask-server, and the tasks they pr
 Runners register themselves with individual instances of taask-server, recieve tasks to be executed, and return their results.
 
 ### Runners
-Taask Runners register themselves with taask-core to make themselves available for tasks.
+The Taask compute plane is comprised of one or more runners. Runners register themselves with taask-core to make themselves available for tasks.
 Runners communicate with taask-server using gRPC, and bi-directionally stream data for optimal performance.
 Tasks are scheduled to runners, they are executed, and the results returned.
 Runners can be written in any language using first-party and third-party runner libraries.
