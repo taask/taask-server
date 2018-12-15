@@ -37,7 +37,14 @@ func (m *Manager) UnregisterRunner(runnerKind, uuid string) error {
 		log.LogWarn(fmt.Sprintf("re-queuing %d tasks from unregistered runner %s", len(deadTasks), uuid))
 
 		for i := range deadTasks {
-			m.updater.UpdateTask(&model.TaskUpdate{UUID: deadTasks[i].UUID, Status: model.TaskStatusFailed, RetrySeconds: deadTasks[i].Meta.RetrySeconds})
+			m.updater.UpdateTask(&model.TaskUpdate{
+				UUID:         deadTasks[i].UUID,
+				Status:       model.TaskStatusFailed,
+				RunnerUUID:   "",
+				RetrySeconds: deadTasks[i].Meta.RetrySeconds,
+				ResultToken:  "",
+			})
+
 			m.startRetryWorker(deadTasks[i])
 		}
 	}

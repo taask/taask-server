@@ -28,7 +28,7 @@ func (sm *Manager) startRetryWorker(task *model.Task) {
 	sm.retrying[task.UUID] = worker
 	sm.retryLock.Unlock()
 
-	sm.updater.UpdateTask(&model.TaskUpdate{UUID: task.UUID, Status: model.TaskStatusRetrying, RetrySeconds: task.Meta.RetrySeconds, RunnerUUID: ""})
+	sm.updater.UpdateTask(&model.TaskUpdate{UUID: task.UUID, Status: model.TaskStatusRetrying, RetrySeconds: task.Meta.RetrySeconds})
 
 	go func() {
 		select {
