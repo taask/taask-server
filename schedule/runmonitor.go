@@ -22,6 +22,8 @@ func (sm *Manager) startRunMonitor(task *model.Task, runnerPool *runnerPool, upd
 	}
 
 	if err := monitor.start(updateChan); err != nil {
+		log.LogWarn(err.Error())
+		sm.updater.UpdateTask(&model.TaskUpdate{UUID: task.UUID, Status: model.TaskStatusFailed, ResultToken: "", RunnerUUID: ""})
 		sm.startRetryWorker(task)
 	}
 }
@@ -29,7 +31,7 @@ func (sm *Manager) startRunMonitor(task *model.Task, runnerPool *runnerPool, upd
 func (rm *runMonitor) start(updateChan chan model.Task) error {
 	log.LogInfo(fmt.Sprintf("starting run monitor for task %s", rm.taskUUID))
 
-	timeoutChan := make(chan time.Time)
+	timeoutChan := make(chan time.Time, 1)
 
 	for {
 		var task model.Task

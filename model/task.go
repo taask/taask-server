@@ -41,3 +41,36 @@ func (t *Task) IsRunning() bool {
 func (t *Task) IsFinished() bool {
 	return t.Status == TaskStatusCompleted || t.Status == TaskStatusFailed
 }
+
+// CanTransitionToState returns true if a task can go from its current state to new
+func (t *Task) CanTransitionToState(new string) bool {
+	if t.Status == "" {
+		return new == TaskStatusWaiting
+	}
+
+	if t.Status == TaskStatusWaiting {
+		return new == TaskStatusQueued || new == TaskStatusRetrying
+	}
+
+	if t.Status == TaskStatusQueued {
+		return new == TaskStatusRunning || new == TaskStatusFailed
+	}
+
+	if t.Status == TaskStatusRunning {
+		return new == TaskStatusCompleted || new == TaskStatusFailed
+	}
+
+	if t.Status == TaskStatusFailed {
+		return new == TaskStatusRetrying
+	}
+
+	if t.Status == TaskStatusRetrying {
+		return new == TaskStatusQueued
+	}
+
+	if t.Status == TaskStatusCompleted {
+		return false // just want to be real clear that this should never happen
+	}
+
+	return false
+}
