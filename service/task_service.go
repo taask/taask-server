@@ -80,7 +80,7 @@ func (ts TaskService) CheckTask(req *model.CheckTaskRequest, stream TaskService_
 			return err
 		}
 
-		if resp.Status == model.TaskStatusCompleted || resp.Status == model.TaskStatusFailed {
+		if resp.Status == model.TaskStatusCompleted {
 			break
 		}
 
