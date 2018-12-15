@@ -81,6 +81,9 @@ func (m *Manager) ScheduleTask(task *model.Task) (string, error) {
 
 	task.UUID = model.NewTaskUUID()
 	task.Status = "" // clear this in case it was set
+	if task.Meta.TimeoutSeconds == 0 {
+		task.Meta.TimeoutSeconds = 600 // 10m
+	}
 
 	if err := m.storage.Add(*task); err != nil {
 		return "", errors.Wrap(err, "failed to storage.Add")
@@ -89,16 +92,14 @@ func (m *Manager) ScheduleTask(task *model.Task) (string, error) {
 	// we do a manual update to waiting to ensure the metrics catch the new task
 	m.Updater.UpdateTask(&model.TaskUpdate{UUID: task.UUID, Status: model.TaskStatusWaiting})
 
-	go func() {
-		m.scheduler.ScheduleTask(task)
-	}()
+	go m.scheduler.ScheduleTask(task)
 
 	return task.UUID, nil
 }
 
 // ScheduleTaskRetry schedules a task to be retried
 func (m *Manager) ScheduleTaskRetry(task *model.Task) {
-	m.scheduler.StartRetryWorker(task)
+	go m.scheduler.ScheduleTask(task)
 }
 
 // GetTask gets a task from storage

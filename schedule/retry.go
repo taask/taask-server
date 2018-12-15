@@ -12,12 +12,11 @@ type RetryTaskWorker struct {
 	nowChan chan bool
 }
 
-// StartRetryWorker starts a retry worker
-func (sm *Manager) StartRetryWorker(task *model.Task) {
-	if task.RetrySeconds == 0 {
-		task.RetrySeconds = 1
-	} else if task.RetrySeconds < 16 {
-		task.RetrySeconds *= 2
+func (sm *Manager) startRetryWorker(task *model.Task) {
+	if task.Meta.RetrySeconds == 0 {
+		task.Meta.RetrySeconds = 1
+	} else if task.Meta.RetrySeconds < 16 {
+		task.Meta.RetrySeconds *= 2
 	}
 
 	worker := &RetryTaskWorker{
@@ -29,11 +28,11 @@ func (sm *Manager) StartRetryWorker(task *model.Task) {
 	sm.retrying[task.UUID] = worker
 	sm.retryLock.Unlock()
 
-	sm.updater.UpdateTask(&model.TaskUpdate{UUID: task.UUID, Status: model.TaskStatusRetrying, RetrySeconds: task.RetrySeconds, RunnerUUID: ""})
+	sm.updater.UpdateTask(&model.TaskUpdate{UUID: task.UUID, Status: model.TaskStatusRetrying, RetrySeconds: task.Meta.RetrySeconds, RunnerUUID: ""})
 
 	go func() {
 		select {
-		case <-time.After(time.Second * time.Duration(worker.task.RetrySeconds)):
+		case <-time.After(time.Second * time.Duration(worker.task.Meta.RetrySeconds)):
 			// run the task
 		case <-worker.nowChan:
 			// ignore the timer and run the task

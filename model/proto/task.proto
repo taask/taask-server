@@ -7,16 +7,22 @@ package taask.server.model;
 option go_package = "github.com/taask/taask-server/model";
 
 message Task {
-	string UUID = 1;
-	string Kind = 2;
-	simpl.crypto.SerializablePubKey ResultPubKey = 3;
+	TaskMeta Meta = 1;
+	string UUID = 2;
+	string Kind = 3;
 	bytes Body = 4;
 	string Status = 5;
-	repeated string Annotations = 6;
-	simpl.crypto.Message EncResult = 7;
-	simpl.crypto.Message EncResultSymKey = 8;
-	string RunnerUUID = 9;
-	int32 RetrySeconds = 10;
+	simpl.crypto.Message EncResult = 6;
+	simpl.crypto.Message EncResultSymKey = 7;
+}
+
+message TaskMeta {
+	repeated string Annotations = 1;
+	string RunnerUUID = 2;
+	string ChildRunnerUUID = 3;
+	simpl.crypto.SerializablePubKey ResultPubKey = 4;
+	int32 RetrySeconds = 5;
+	int32 timeoutSeconds = 6;
 }
 
 message QueueTaskResponse {
@@ -40,4 +46,5 @@ message TaskUpdate {
 	simpl.crypto.Message EncResultSymKey = 4;
 	string RunnerUUID = 5;
 	int32 RetrySeconds = 6;
+	int32 TimeoutSeconds = 7;
 }

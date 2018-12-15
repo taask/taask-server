@@ -10,7 +10,7 @@ server/proto/model:
 server/proto/service:
 	protoc -I=$(GOPATH)/src -I=. -I=service/proto --go_out=plugins=grpc:$(GOPATH)/src $(shell ls ./service/proto/)
 
-server/proto: proto/model proto/service
+server/proto: server/proto/model server/proto/service
 
 .phony: proto
 	

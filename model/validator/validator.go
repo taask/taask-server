@@ -28,7 +28,7 @@ func (vr *Result) addProblem(prob string) {
 
 // String returns a string representation of a result
 func (vr *Result) String() string {
-	errString := fmt.Sprintf("validator found %d problems:")
+	errString := fmt.Sprintf("validator found %d problems:", len(vr.Errors))
 
 	for i, e := range vr.Errors {
 		errString += fmt.Sprintf("\n\t%d: %s", i+1, e.Error())

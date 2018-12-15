@@ -6,7 +6,7 @@ import "github.com/taask/taask-server/model"
 func ValidateTask(task *model.Task) *Result {
 	result := resultOfType(typeTask)
 
-	if task.ResultPubKey == nil {
+	if task.Meta.ResultPubKey == nil {
 		result.addProblem("missing ResultPubKey")
 	} else {
 		// TODO: validate pubkey

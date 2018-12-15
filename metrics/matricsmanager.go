@@ -89,7 +89,7 @@ func (m *Manager) UpdateTask(task model.Task, update *model.TaskUpdate) {
 		m.updateStatusMetrics(task, update)
 	}
 
-	// if update.RunnerUUID != "" && task.RunnerUUID != update.RunnerUUID {
+	// if update.RunnerUUID != "" && task.Meta.RunnerUUID != update.RunnerUUID {
 	// 	log.LogInfo("updating runner metric")
 
 	// 	m.metricMap[update.Status].With(prometheus.Labels{metricsRunnerLabel: update.RunnerUUID, metricsKindLabel: task.Kind}).Inc()
@@ -104,10 +104,10 @@ func (m *Manager) UpdateTask(task model.Task, update *model.TaskUpdate) {
 func (m *Manager) updateStatusMetrics(task model.Task, update *model.TaskUpdate) {
 	if task.Status != "" {
 		old := m.metricMap[task.Status]
-		old.With(prometheus.Labels{metricsRunnerLabel: task.RunnerUUID, metricsKindLabel: task.Kind}).Dec()
+		old.With(prometheus.Labels{metricsRunnerLabel: task.Meta.RunnerUUID, metricsKindLabel: task.Kind}).Dec()
 	} else if task.Status == "" && update.Status == model.TaskStatusWaiting {
 		// we only want to increment active on the task's first update, which will always be nothing->waiting
-		m.metricMap["active"].With(prometheus.Labels{metricsRunnerLabel: task.RunnerUUID, metricsKindLabel: task.Kind}).Inc()
+		m.metricMap["active"].With(prometheus.Labels{metricsRunnerLabel: task.Meta.RunnerUUID, metricsKindLabel: task.Kind}).Inc()
 	}
 
 	// if the update is nil, then we just want to decrement the old status
@@ -117,11 +117,11 @@ func (m *Manager) updateStatusMetrics(task model.Task, update *model.TaskUpdate)
 			// update the runner label if it's changed
 			new.With(prometheus.Labels{metricsRunnerLabel: update.RunnerUUID, metricsKindLabel: task.Kind}).Inc()
 		} else {
-			new.With(prometheus.Labels{metricsRunnerLabel: task.RunnerUUID, metricsKindLabel: task.Kind}).Inc()
+			new.With(prometheus.Labels{metricsRunnerLabel: task.Meta.RunnerUUID, metricsKindLabel: task.Kind}).Inc()
 		}
 
 		if update.Status == model.TaskStatusCompleted || update.Status == model.TaskStatusFailed {
-			m.metricMap["active"].With(prometheus.Labels{metricsRunnerLabel: task.RunnerUUID, metricsKindLabel: task.Kind}).Dec()
+			m.metricMap["active"].With(prometheus.Labels{metricsRunnerLabel: task.Meta.RunnerUUID, metricsKindLabel: task.Kind}).Dec()
 		}
 	}
 }
