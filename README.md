@@ -51,7 +51,7 @@ And optional components:
 
 ### Server
 The Taask Core server (this project) is the main component of the Taask control plane.
-It is responsible for consuming tasks, tracking their state, and scheduling them onto the compute layer.
+It is responsible for consuming tasks, tracking their state, and scheduling them onto the compute plane.
 taask-server operates in a "managing partner" cluster. Multiple instances work together to share management tasks.
 Clients can communicate with any instance of taask-server, and the tasks they produce will be distributed across the partners and their runners.
 Runners register themselves with individual instances of taask-server, recieve tasks to be executed, and return their results.
