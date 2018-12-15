@@ -80,9 +80,10 @@ func (m *Manager) ScheduleTask(task *model.Task) (string, error) {
 	}
 
 	task.UUID = model.NewTaskUUID()
-	task.Status = "" // clear this in case it was set
+	task.Status = ""           // clear this in case it was set
+	task.Meta.ResultToken = "" // clear this too
 	if task.Meta.TimeoutSeconds == 0 {
-		task.Meta.TimeoutSeconds = 600 // 10m
+		task.Meta.TimeoutSeconds = 600 // 10m default
 	}
 
 	if err := m.storage.Add(*task); err != nil {

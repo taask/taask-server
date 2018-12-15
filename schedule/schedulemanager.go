@@ -83,7 +83,8 @@ func (m *Manager) Start() {
 			continue
 		}
 
-		m.updater.UpdateTask(&model.TaskUpdate{UUID: nextTask.UUID, Status: model.TaskStatusQueued, RunnerUUID: runner.UUID})
+		nextTask.Meta.ResultToken = model.NewResultToken()
+		m.updater.UpdateTask(&model.TaskUpdate{UUID: nextTask.UUID, Status: model.TaskStatusQueued, RunnerUUID: runner.UUID, ResultToken: nextTask.Meta.ResultToken})
 
 		listener := m.updater.GetListener(nextTask.UUID)
 		go m.startRunMonitor(nextTask, runnerPool, listener)

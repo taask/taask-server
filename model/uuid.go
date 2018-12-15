@@ -21,6 +21,11 @@ func NewTaskUUID() string {
 	return lowercaseUUID()
 }
 
+// NewResultToken retuens a result token
+func NewResultToken() string {
+	return lowercaseUUID()[:12]
+}
+
 // NewRunnerUUID returns a new task UUID
 func NewRunnerUUID() string {
 	return uppercaseUUID()
