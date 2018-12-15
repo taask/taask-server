@@ -90,3 +90,6 @@ Task data is opaque and encrypted by default.
 - When a task is assigned to a runner, taask-server re-encrypts the _task key_ using the runner's _runner public key_
 - The runner decrypts the _task key_ and then uses it to decrypt the task data.
 - The task key is then used to encrypt the task result data, and the _task key_ is re-encrypted with the _task public key_.
+
+### Maintainers
+- Connor Hicks [@cohix](https://github.com/cohix)
