@@ -83,8 +83,18 @@ func (m *Manager) Start() {
 			continue
 		}
 
-		nextTask.Meta.ResultToken = model.NewResultToken()
-		m.updater.UpdateTask(&model.TaskUpdate{UUID: nextTask.UUID, Status: model.TaskStatusQueued, RunnerUUID: runner.UUID, ResultToken: nextTask.Meta.ResultToken})
+		update, err := nextTask.Update(model.TaskUpdate{
+			UUID:        nextTask.UUID,
+			Status:      model.TaskStatusQueued,
+			RunnerUUID:  runner.UUID,
+			ResultToken: model.NewResultToken(),
+		})
+
+		if err != nil {
+			log.LogWarn(errors.Wrap(err, "startRetryWorker failed to task.Update").Error())
+		}
+
+		m.updater.UpdateTask(update)
 
 		listener := m.updater.GetListener(nextTask.UUID)
 		go m.startRunMonitor(nextTask, runnerPool, listener)

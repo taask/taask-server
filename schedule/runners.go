@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	log "github.com/cohix/simplog"
+	"github.com/pkg/errors"
 	"github.com/taask/taask-server/model"
 )
 
@@ -37,13 +38,19 @@ func (m *Manager) UnregisterRunner(runnerKind, uuid string) error {
 		log.LogWarn(fmt.Sprintf("re-queuing %d tasks from unregistered runner %s", len(deadTasks), uuid))
 
 		for i := range deadTasks {
-			m.updater.UpdateTask(&model.TaskUpdate{
+			update, err := deadTasks[i].Update(model.TaskUpdate{
 				UUID:         deadTasks[i].UUID,
 				Status:       model.TaskStatusFailed,
 				RunnerUUID:   "",
 				RetrySeconds: deadTasks[i].Meta.RetrySeconds,
-				ResultToken:  "",
+				ResultToken:  "", // TODO: determine if we want to clear this, or allow racy runners to send a result until the point a task is re-queued
 			})
+
+			if err != nil {
+				log.LogWarn(errors.Wrap(err, "startRetryWorker failed to task.Update").Error())
+			}
+
+			m.updater.UpdateTask(update)
 
 			m.startRetryWorker(deadTasks[i])
 		}

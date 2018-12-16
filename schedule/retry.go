@@ -5,6 +5,7 @@ import (
 	"time"
 
 	log "github.com/cohix/simplog"
+	"github.com/pkg/errors"
 	"github.com/taask/taask-server/model"
 )
 
@@ -32,7 +33,12 @@ func (sm *Manager) startRetryWorker(task *model.Task) {
 	sm.retrying[task.UUID] = worker
 	sm.retryLock.Unlock()
 
-	sm.updater.UpdateTask(&model.TaskUpdate{UUID: task.UUID, Status: model.TaskStatusRetrying, RetrySeconds: retrySeconds})
+	update, err := task.Update(model.TaskUpdate{Status: model.TaskStatusRetrying, RetrySeconds: retrySeconds})
+	if err != nil {
+		log.LogWarn(errors.Wrap(err, "startRetryWorker failed to task.Update").Error())
+	}
+
+	sm.updater.UpdateTask(update)
 
 	go func() {
 		select {

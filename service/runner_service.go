@@ -95,7 +95,7 @@ func (rs *RunnerService) RegisterRunner(req *model.RegisterRunnerRequest, stream
 func (rs *RunnerService) UpdateTask(ctx context.Context, req *model.TaskUpdate) (*Empty, error) {
 	defer log.LogTrace(fmt.Sprintf("UpdateTask task %s", req.UUID))()
 
-	go rs.Manager.Updater.UpdateTask(req)
+	rs.Manager.Updater.UpdateTask(req)
 
 	return &Empty{}, nil
 }
