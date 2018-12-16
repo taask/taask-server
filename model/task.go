@@ -55,10 +55,6 @@ func (t *Task) ApplyUpdate(update *TaskUpdate) error {
 	}
 
 	if update.EncResult != nil {
-		if t.Meta.ResultToken != update.ResultToken {
-			return fmt.Errorf("task %s tried to update result with invalid result token, throwing it away", update.UUID)
-		}
-
 		t.EncResult = update.EncResult
 		t.EncResultSymKey = update.EncResultSymKey
 	}

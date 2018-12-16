@@ -43,7 +43,6 @@ func (m *Manager) UnregisterRunner(runnerKind, uuid string) error {
 				Status:       model.TaskStatusFailed,
 				RunnerUUID:   "",
 				RetrySeconds: deadTasks[i].Meta.RetrySeconds,
-				ResultToken:  "", // TODO: determine if we want to clear this, or allow racy runners to send a result until the point a task is re-queued
 			})
 
 			if err != nil {

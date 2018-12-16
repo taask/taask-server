@@ -25,7 +25,7 @@ func (sm *Manager) startRunMonitor(task *model.Task, runnerPool *runnerPool, upd
 	if err := monitor.start(updateChan); err != nil {
 		log.LogWarn(err.Error())
 
-		update, err := task.Update(model.TaskUpdate{Status: model.TaskStatusFailed, ResultToken: "", RunnerUUID: ""})
+		update, err := task.Update(model.TaskUpdate{Status: model.TaskStatusFailed, RunnerUUID: ""})
 		if err != nil {
 			log.LogWarn(errors.Wrap(err, "startRetryWorker failed to task.Update").Error())
 		}

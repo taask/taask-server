@@ -84,10 +84,9 @@ func (m *Manager) Start() {
 		}
 
 		update, err := nextTask.Update(model.TaskUpdate{
-			UUID:        nextTask.UUID,
-			Status:      model.TaskStatusQueued,
-			RunnerUUID:  runner.UUID,
-			ResultToken: model.NewResultToken(),
+			UUID:       nextTask.UUID,
+			Status:     model.TaskStatusQueued,
+			RunnerUUID: runner.UUID,
 		})
 
 		if err != nil {
