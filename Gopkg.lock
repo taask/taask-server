@@ -27,11 +27,11 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:cfe7e13a0a8163119ffd948905e99c6bd5c84078373ef70b786a546e5f688440"
+  digest = "1:3ac915fdf7ec9e04e621a4186c5b002ce8e804624130eb787c58228286fe07d9"
   name = "github.com/cohix/simplog"
   packages = ["."]
   pruneopts = "UT"
-  revision = "06c94d2ba3db3e5974a2230d3bcb253dfa8edf8b"
+  revision = "63beabeef6a3e731915b4a3f11ef97f2b18bd3a9"
 
 [[projects]]
   digest = "1:4c0989ca0bcd10799064318923b9bc2db6b4d6338dd75f3f2d86c3511aaaf5cf"

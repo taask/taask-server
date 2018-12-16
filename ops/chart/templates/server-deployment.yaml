@@ -17,7 +17,7 @@ spec:
       containers:
       - name: taask-server
         image: taask/server:{{ .Values.Tag }}
-        command: ["/taask/taask-server"]
+        command: ["/taask/taask-server", "--noinfo"]
         imagePullPolicy: IfNotPresent
         # args: []
         ports:

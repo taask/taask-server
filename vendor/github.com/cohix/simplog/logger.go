@@ -9,10 +9,12 @@ import (
 
 var includeDebug bool
 var includeTrace bool
+var noInfo bool
 
 func init() {
 	_, includeDebug = flag.CheckFlag("debug")
 	_, includeTrace = flag.CheckFlag("trace")
+	_, noInfo = flag.CheckFlag("noinfo")
 }
 
 type logMessage struct {
@@ -34,6 +36,10 @@ func LogWarn(msg string) {
 
 // LogInfo logs an information message
 func LogInfo(msg string) {
+	if noInfo {
+		return
+	}
+
 	fmt.Printf("(I) %s\n", msg)
 }
 

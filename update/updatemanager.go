@@ -50,34 +50,8 @@ func (m *Manager) UpdateTask(update *model.TaskUpdate) {
 
 	// if update is nil, then we just wanted to update metrics
 	if update != nil {
-		if update.EncResult != nil {
-			if task.Meta.ResultToken != update.ResultToken {
-				log.LogWarn(fmt.Sprintf("task %s tried to update result with invalid result token, throwing it away", update.UUID))
-				return
-			}
-
-			task.EncResult = update.EncResult
-			task.EncResultSymKey = update.EncResultSymKey
-		}
-
-		if update.Status != "" && task.Status != update.Status {
-			if task.CanTransitionToState(update.Status) {
-				log.LogInfo(fmt.Sprintf("task %s status updated (%s -> %s)", task.UUID, task.Status, update.Status))
-				task.Status = update.Status
-			} else {
-				log.LogWarn(fmt.Sprintf("task %s tried to transition from %s to %s, throwing update away", task.UUID, task.Status, update.Status))
-				return
-			}
-		}
-
-		if update.RunnerUUID != "" && task.Meta.RunnerUUID != update.RunnerUUID {
-			log.LogInfo(fmt.Sprintf("task %s assigned to runner %s", task.UUID, update.RunnerUUID))
-			task.Meta.RunnerUUID = update.RunnerUUID
-		}
-
-		if update.RetrySeconds != 0 && task.Meta.RetrySeconds != update.RetrySeconds {
-			log.LogInfo(fmt.Sprintf("task %s set to retry in %d seconds", task.UUID, update.RetrySeconds))
-			task.Meta.RetrySeconds = update.RetrySeconds
+		if err := task.ApplyUpdate(update); err != nil {
+			log.LogWarn(errors.Wrap(err, "update.Manager failed to ApplyUpdate").Error())
 		}
 
 		if err := m.storage.Update(*task); err != nil {
