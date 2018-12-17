@@ -17,13 +17,14 @@ spec:
       containers:
       - name: taask-server
         image: taask/server:{{ .Values.Tag }}
-        command: ["/taask/taask-server", "--noinfo"]
+        command: ["/taask/taask-server"]
         imagePullPolicy: IfNotPresent
         # args: []
         ports:
         - containerPort: 3687
         - containerPort: 3688
         - containerPort: 3689
+        - containerPort: 6060
         volumeMounts:
         - mountPath: /taask/config
           name: taask-config
@@ -65,6 +66,10 @@ spec:
     port: 3688
     protocol: TCP
     nodePort: 30688
+  - name: pprof
+    port: 6060
+    protocol: TCP
+    nodePort: 30600
   selector:
     io.taask/component: taask-server
   type: NodePort

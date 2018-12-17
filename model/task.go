@@ -35,23 +35,23 @@ const (
 )
 
 // Update applies an update to a task object and returns the update with the updated version number
-func (t *Task) Update(u TaskUpdate) (*TaskUpdate, error) {
+func (t *Task) Update(u TaskUpdate) (TaskUpdate, error) {
 	u.UUID = t.UUID
 	u.Version = t.Meta.Version + 1
 
-	if err := t.ApplyUpdate(&u); err != nil {
-		return nil, errors.Wrap(err, "failed to ApplyUpdate")
+	if err := t.ApplyUpdate(u, false); err != nil {
+		return TaskUpdate{}, errors.Wrap(err, "failed to ApplyUpdate")
 	}
 
-	return &u, nil
+	return u, nil
 }
 
 // ApplyUpdate applies an update to a task
-func (t *Task) ApplyUpdate(update *TaskUpdate) error {
+func (t *Task) ApplyUpdate(update TaskUpdate, logIt bool) error {
 	if update.Version == t.Meta.Version+1 {
 		t.Meta.Version = update.Version
 	} else {
-		return fmt.Errorf("tried to apply update with version %d, task has version %d", update.Version, t.Meta.Version)
+		return fmt.Errorf("tried to apply update with version %d, task %s has version %d", update.Version, t.UUID, t.Meta.Version)
 	}
 
 	if update.EncResult != nil {
@@ -61,7 +61,9 @@ func (t *Task) ApplyUpdate(update *TaskUpdate) error {
 
 	if update.Status != "" && t.Status != update.Status {
 		if t.CanTransitionToState(update.Status) {
-			log.LogInfo(fmt.Sprintf("task %s status updated (%s -> %s)", t.UUID, t.Status, update.Status))
+			if logIt {
+				log.LogInfo(fmt.Sprintf("task %s status updated (%s -> %s)", t.UUID, t.Status, update.Status))
+			}
 			t.Status = update.Status
 		} else {
 			return fmt.Errorf("task %s tried to transition from %s to %s, throwing update away", t.UUID, t.Status, update.Status)
@@ -69,12 +71,16 @@ func (t *Task) ApplyUpdate(update *TaskUpdate) error {
 	}
 
 	if update.RunnerUUID != "" && t.Meta.RunnerUUID != update.RunnerUUID {
-		log.LogInfo(fmt.Sprintf("task %s assigned to runner %s", t.UUID, update.RunnerUUID))
+		if logIt {
+			log.LogInfo(fmt.Sprintf("task %s assigned to runner %s", t.UUID, update.RunnerUUID))
+		}
 		t.Meta.RunnerUUID = update.RunnerUUID
 	}
 
 	if update.RetrySeconds != 0 && t.Meta.RetrySeconds != update.RetrySeconds {
-		log.LogInfo(fmt.Sprintf("task %s set to retry in %d seconds", t.UUID, update.RetrySeconds))
+		if logIt {
+			log.LogInfo(fmt.Sprintf("task %s set to retry in %d seconds", t.UUID, update.RetrySeconds))
+		}
 		t.Meta.RetrySeconds = update.RetrySeconds
 	}
 
@@ -84,6 +90,11 @@ func (t *Task) ApplyUpdate(update *TaskUpdate) error {
 // IsNotStarted is if a task hasn't even tried to run yet (hasn't been assigned a runner)
 func (t *Task) IsNotStarted() bool {
 	return t.Status == TaskStatusWaiting || t.Status == TaskStatusRetrying
+}
+
+// IsRetrying is if a task hasn't even tried to run yet (hasn't been assigned a runner)
+func (t *Task) IsRetrying() bool {
+	return t.Status == TaskStatusRetrying
 }
 
 // IsRunning is if the task is in the process of being run (has been assigned a runner)
@@ -107,11 +118,11 @@ func (t *Task) CanTransitionToState(new string) bool {
 	}
 
 	if t.Status == TaskStatusQueued {
-		return new == TaskStatusRunning || new == TaskStatusFailed
+		return new == TaskStatusRunning || new == TaskStatusFailed || new == TaskStatusRetrying
 	}
 
 	if t.Status == TaskStatusRunning {
-		return new == TaskStatusCompleted || new == TaskStatusFailed
+		return new == TaskStatusCompleted || new == TaskStatusFailed || new == TaskStatusRetrying
 	}
 
 	if t.Status == TaskStatusFailed {

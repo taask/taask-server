@@ -6,18 +6,17 @@ import (
 	"sync"
 
 	log "github.com/cohix/simplog"
-	"github.com/pkg/errors"
 	"github.com/taask/taask-server/model"
 )
 
 // RegisterRunner registers the existence of a runner
-func (m *Manager) RegisterRunner(runner *model.Runner) {
+func (sm *Manager) RegisterRunner(runner *model.Runner) {
 	defer log.LogTrace("RegisterRunner")()
 
-	pool, ok := m.runnerPools[runner.Kind]
+	pool, ok := sm.runnerPools[runner.Kind]
 	if !ok {
 		pool = newRunnerPool()
-		m.runnerPools[runner.Kind] = pool
+		sm.runnerPools[runner.Kind] = pool
 	}
 
 	go pool.addRunner(runner)
@@ -25,10 +24,10 @@ func (m *Manager) RegisterRunner(runner *model.Runner) {
 
 // UnregisterRunner removes a runner from eligibility
 // this contains some lock-contentious calls, but we're ok if it's slow if it means that we never lose a task
-func (m *Manager) UnregisterRunner(runnerKind, uuid string) error {
+func (sm *Manager) UnregisterRunner(runnerKind, uuid string) error {
 	defer log.LogTrace("UnregisterRunner")()
 
-	pool, ok := m.runnerPools[runnerKind]
+	pool, ok := sm.runnerPools[runnerKind]
 	if !ok {
 		return fmt.Errorf("no runner pool of Kind %s found", runnerKind)
 	}
@@ -38,20 +37,8 @@ func (m *Manager) UnregisterRunner(runnerKind, uuid string) error {
 		log.LogWarn(fmt.Sprintf("re-queuing %d tasks from unregistered runner %s", len(deadTasks), uuid))
 
 		for i := range deadTasks {
-			update, err := deadTasks[i].Update(model.TaskUpdate{
-				UUID:         deadTasks[i].UUID,
-				Status:       model.TaskStatusFailed,
-				RunnerUUID:   "",
-				RetrySeconds: deadTasks[i].Meta.RetrySeconds,
-			})
-
-			if err != nil {
-				log.LogWarn(errors.Wrap(err, "startRetryWorker failed to task.Update").Error())
-			}
-
-			m.updater.UpdateTask(update)
-
-			m.startRetryWorker(deadTasks[i])
+			log.LogInfo(fmt.Sprintf("starting retry worker for dead task %s", deadTasks[i]))
+			sm.startRetryWorker(deadTasks[i])
 		}
 	}
 
@@ -62,10 +49,10 @@ type runnerPool struct {
 	// runners is a map from a UUID to the runner with that UUID
 	runners map[string]*model.Runner
 
-	// tracker is a doubly linked list of runners in priority of lowest current load
-	tracker *list.List
+	// runnerTracker is a doubly linked list of runners in priority of lowest current load
+	runnerTracker *list.List
 
-	// poolLock is a lock for the pool, lock to be applied on all operations that modify `runners` or `tracker`
+	// poolLock is a lock for the pool, lock to be applied on all operations that modify `runners` or `runnerTracker`
 	poolLock *sync.Mutex
 }
 
@@ -73,8 +60,8 @@ type runnerLoad struct {
 	// UUID is the uuid of the runner
 	UUID string
 
-	// AssignedCount is the number of tasks queued and running on a runner
-	AssignedTasks map[string]*model.Task
+	// AssignedTasks are the tasks queued and running on a runner
+	AssignedTasks map[string]string
 }
 
 func (rl *runnerLoad) AssignedCount() int {
@@ -83,9 +70,9 @@ func (rl *runnerLoad) AssignedCount() int {
 
 func newRunnerPool() *runnerPool {
 	rp := &runnerPool{
-		runners:  make(map[string]*model.Runner),
-		tracker:  list.New(),
-		poolLock: &sync.Mutex{},
+		runners:       make(map[string]*model.Runner),
+		runnerTracker: list.New(),
+		poolLock:      &sync.Mutex{},
 	}
 
 	return rp
@@ -97,98 +84,114 @@ func (rp *runnerPool) addRunner(runner *model.Runner) {
 
 	rp.runners[runner.UUID] = runner
 
-	tracker := &runnerLoad{
+	runnerTracker := &runnerLoad{
 		UUID:          runner.UUID,
-		AssignedTasks: make(map[string]*model.Task),
+		AssignedTasks: make(map[string]string),
 	}
 
-	rp.tracker.PushFront(tracker)
+	rp.runnerTracker.PushFront(runnerTracker)
 }
 
-func (rp *runnerPool) removeRunner(uuid string) []*model.Task {
+// returns the tasks that were assigned to the runner when it was removed
+func (rp *runnerPool) removeRunner(uuid string) []string {
 	rp.poolLock.Lock()
 	defer rp.poolLock.Unlock()
 
+	deadTasks := rp.removeTracker(uuid)
+
 	delete(rp.runners, uuid)
 
-	return rp.removeTracker(uuid)
+	return deadTasks
 }
 
 func (rp *runnerPool) assignTaskToNextRunner(task *model.Task) (*model.Runner, error) {
 	rp.poolLock.Lock()
 	defer rp.poolLock.Unlock()
 
-	trackerElement := rp.tracker.Front()
-	if trackerElement == nil {
+	elem := rp.runnerTracker.Front()
+	if elem == nil {
 		return nil, ErrorNoRunnersRegistered
 	}
 
-	tracker := trackerElement.Value.(*runnerLoad)
+	runnerTracker := elem.Value.(*runnerLoad)
 
-	if tracker.AssignedCount() >= 10 {
+	if runnerTracker.AssignedCount() >= 10 {
 		return nil, ErrorCapacityReached
 	}
 
-	runner := rp.runners[tracker.UUID]
+	runner := rp.runners[runnerTracker.UUID]
 
-	tracker.AssignedTasks[task.UUID] = task
+	runnerTracker.AssignedTasks[task.UUID] = task.UUID
 
-	defer rp.rebalance(trackerElement, tracker.AssignedCount()) // since the unlock was deferred first, the lock will be held until the rebalance is finished
+	defer rp.rebalance(elem, runnerTracker.AssignedCount()) // since the unlock was deferred first, the lock will be held until the rebalance is finished
 
 	return runner, nil
+}
+
+func (rp *runnerPool) print() {
+	fmt.Println("====printing runner pool====")
+	for e := rp.runnerTracker.Front(); e != nil; e = e.Next() {
+		runnerTracker := e.Value.(*runnerLoad)
+
+		fmt.Printf("runner %s, assigned:\n", runnerTracker.UUID)
+		for _, uuid := range runnerTracker.AssignedTasks {
+			fmt.Printf("\task %s\n", uuid)
+		}
+	}
+	fmt.Println("====done runner pool====")
 }
 
 func (rp *runnerPool) runnerCompletedTask(runnerUUID, taskUUID string) {
 	rp.poolLock.Lock()
 	defer rp.poolLock.Unlock()
 
-	for e := rp.tracker.Back(); e != nil; e = e.Prev() {
-		tracker := e.Value.(*runnerLoad)
+	for e := rp.runnerTracker.Back(); e != nil; e = e.Prev() {
+		runnerTracker := e.Value.(*runnerLoad)
 
-		if tracker.UUID == runnerUUID {
-			delete(tracker.AssignedTasks, taskUUID)
-			rp.rebalance(e, tracker.AssignedCount())
+		if runnerTracker.UUID == runnerUUID {
+			delete(runnerTracker.AssignedTasks, taskUUID)
+			rp.rebalance(e, runnerTracker.AssignedCount())
 			return
 		}
 	}
 }
 
 func (rp *runnerPool) rebalance(elem *list.Element, newVal int) {
-	if rp.tracker.Len() == 1 {
+	if rp.runnerTracker.Len() == 1 {
 		return
 	}
 
-	for e := rp.tracker.Back(); e != nil; e = e.Prev() {
+	for e := rp.runnerTracker.Back(); e != nil; e = e.Prev() {
 		if e == elem {
 			return
 		}
 
-		tracker := e.Value.(*runnerLoad)
+		runnerTracker := e.Value.(*runnerLoad)
 
-		if newVal >= tracker.AssignedCount() {
-			rp.tracker.MoveAfter(elem, e)
+		if newVal >= runnerTracker.AssignedCount() {
+			rp.runnerTracker.MoveAfter(elem, e)
 			return
 		}
 	}
 
-	if rp.tracker.Front() != elem {
-		rp.tracker.MoveBefore(elem, rp.tracker.Front())
+	if rp.runnerTracker.Front() != elem {
+		rp.runnerTracker.MoveBefore(elem, rp.runnerTracker.Front())
 	}
 }
 
-// removeTracker returns the tasks that were assigned to the runner at the time it was removed
-func (rp *runnerPool) removeTracker(uuid string) []*model.Task {
-	tasks := []*model.Task{}
+// removeTracker returns the uuids of the tasks that were assigned to the runner at the time it was removed
+func (rp *runnerPool) removeTracker(uuid string) []string {
+	tasks := []string{}
 
-	for e := rp.tracker.Back(); e != nil; e = e.Prev() {
-		tracker := e.Value.(*runnerLoad)
+	for e := rp.runnerTracker.Back(); e != nil; e = e.Prev() {
+		runnerTracker := e.Value.(*runnerLoad)
 
-		for uuid := range tracker.AssignedTasks {
-			tasks = append(tasks, tracker.AssignedTasks[uuid])
-		}
+		if runnerTracker.UUID == uuid {
+			for uuid := range runnerTracker.AssignedTasks {
+				tasks = append(tasks, runnerTracker.AssignedTasks[uuid])
+			}
 
-		if tracker.UUID == uuid {
-			rp.tracker.Remove(e)
+			rp.runnerTracker.Remove(e)
 			break
 		}
 	}

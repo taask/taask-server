@@ -84,7 +84,7 @@ func (m *Manager) Handler() http.Handler {
 }
 
 // UpdateTask updates the current task metrics
-func (m *Manager) UpdateTask(task model.Task, update *model.TaskUpdate) {
+func (m *Manager) UpdateTask(task model.Task, update model.TaskUpdate) {
 	if update.Status != "" && task.Status != update.Status {
 		m.updateStatusMetrics(task, update)
 	}
@@ -101,7 +101,7 @@ func (m *Manager) UpdateTask(task model.Task, update *model.TaskUpdate) {
 	// }
 }
 
-func (m *Manager) updateStatusMetrics(task model.Task, update *model.TaskUpdate) {
+func (m *Manager) updateStatusMetrics(task model.Task, update model.TaskUpdate) {
 	if task.Status != "" {
 		old := m.metricMap[task.Status]
 		old.With(prometheus.Labels{metricsRunnerLabel: task.Meta.RunnerUUID, metricsKindLabel: task.Kind}).Dec()
@@ -110,19 +110,16 @@ func (m *Manager) updateStatusMetrics(task model.Task, update *model.TaskUpdate)
 		m.metricMap["active"].With(prometheus.Labels{metricsRunnerLabel: task.Meta.RunnerUUID, metricsKindLabel: task.Kind}).Inc()
 	}
 
-	// if the update is nil, then we just want to decrement the old status
-	if update != nil {
-		new := m.metricMap[update.Status]
-		if update.RunnerUUID != "" {
-			// update the runner label if it's changed
-			new.With(prometheus.Labels{metricsRunnerLabel: update.RunnerUUID, metricsKindLabel: task.Kind}).Inc()
-		} else {
-			new.With(prometheus.Labels{metricsRunnerLabel: task.Meta.RunnerUUID, metricsKindLabel: task.Kind}).Inc()
-		}
+	new := m.metricMap[update.Status]
+	if update.RunnerUUID != "" {
+		// update the runner label if it's changed
+		new.With(prometheus.Labels{metricsRunnerLabel: update.RunnerUUID, metricsKindLabel: task.Kind}).Inc()
+	} else {
+		new.With(prometheus.Labels{metricsRunnerLabel: task.Meta.RunnerUUID, metricsKindLabel: task.Kind}).Inc()
+	}
 
-		if update.Status == model.TaskStatusCompleted || update.Status == model.TaskStatusFailed {
-			m.metricMap["active"].With(prometheus.Labels{metricsRunnerLabel: task.Meta.RunnerUUID, metricsKindLabel: task.Kind}).Dec()
-		}
+	if update.Status == model.TaskStatusCompleted || update.Status == model.TaskStatusFailed {
+		m.metricMap["active"].With(prometheus.Labels{metricsRunnerLabel: task.Meta.RunnerUUID, metricsKindLabel: task.Kind}).Dec()
 	}
 }
 

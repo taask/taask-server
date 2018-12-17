@@ -5,7 +5,6 @@ import (
 	"time"
 
 	log "github.com/cohix/simplog"
-	"github.com/pkg/errors"
 	"github.com/taask/taask-server/model"
 )
 
@@ -15,38 +14,47 @@ type runMonitor struct {
 	runnerPool     *runnerPool
 }
 
-func (sm *Manager) startRunMonitor(task *model.Task, runnerPool *runnerPool, updateChan chan model.Task) {
+func (sm *Manager) startRunMonitor(taskUUID string, runnerPool *runnerPool) {
+	updateChan := sm.updater.GetListener(taskUUID)
+
 	monitor := &runMonitor{
-		taskUUID:       task.UUID,
-		timeoutSeconds: task.Meta.TimeoutSeconds,
-		runnerPool:     runnerPool,
+		taskUUID:   taskUUID,
+		runnerPool: runnerPool,
 	}
 
-	if err := monitor.start(updateChan); err != nil {
+	sm.runningLock.Lock()
+	sm.running[taskUUID] = monitor
+	sm.runningLock.Unlock()
+
+	if task, err := monitor.start(updateChan); err != nil {
 		log.LogWarn(err.Error())
 
-		update, err := task.Update(model.TaskUpdate{Status: model.TaskStatusFailed, RunnerUUID: ""})
-		if err != nil {
-			log.LogWarn(errors.Wrap(err, "startRetryWorker failed to task.Update").Error())
-		}
-
-		sm.updater.UpdateTask(update)
-		sm.startRetryWorker(task)
+		sm.startRetryWorker(task.UUID)
 	}
+
+	sm.runningLock.Lock()
+	delete(sm.running, taskUUID)
+	sm.runningLock.Unlock()
 }
 
-func (rm *runMonitor) start(updateChan chan model.Task) error {
+func (rm *runMonitor) start(updateChan chan model.Task) (*model.Task, error) {
 	log.LogInfo(fmt.Sprintf("starting run monitor for task %s", rm.taskUUID))
 
 	timeoutChan := make(chan time.Time, 1)
 
+	var task model.Task
+
 	for {
-		var task model.Task
 		select {
 		case task = <-updateChan:
 			// continue
 		case <-timeoutChan:
-			return fmt.Errorf("task %s completion not reached before timeout", rm.taskUUID)
+			if !task.IsRetrying() {
+				// if the timeout is thrown but the task is already retrying, don't throw an error
+				return &task, fmt.Errorf("task %s not completed before timeout", rm.taskUUID)
+			}
+
+			continue
 		}
 
 		if task.IsFinished() {
@@ -54,15 +62,20 @@ func (rm *runMonitor) start(updateChan chan model.Task) error {
 
 			rm.runnerPool.runnerCompletedTask(task.Meta.RunnerUUID, task.UUID)
 
-			if task.Status != model.TaskStatusCompleted {
-				return fmt.Errorf("task %s reported in state %s", task.UUID, task.Status)
-			}
-
-			return nil
+			return nil, nil
 		}
 
 		if task.IsRunning() {
+			rm.timeoutSeconds = task.Meta.TimeoutSeconds
 			go rm.startTimeout(timeoutChan)
+		}
+
+		if task.IsRetrying() {
+			log.LogInfo(fmt.Sprintf("task %s began retrying, updating runner %s tracker", task.UUID, task.Meta.RunnerUUID))
+
+			if task.Meta.RunnerUUID != "" {
+				rm.runnerPool.runnerCompletedTask(task.Meta.RunnerUUID, task.UUID)
+			}
 		}
 	}
 }

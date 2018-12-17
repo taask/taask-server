@@ -34,7 +34,7 @@ func NewManager(storage storage.Manager, metrics *metrics.Manager) *Manager {
 }
 
 // UpdateTask updates a task in storage and notifies listeners of the new status
-func (m *Manager) UpdateTask(update *model.TaskUpdate) {
+func (m *Manager) UpdateTask(update model.TaskUpdate) {
 	if update.UUID == "" {
 		log.LogError(errors.New("attempted to update task without providing UUID"))
 		return
@@ -46,28 +46,28 @@ func (m *Manager) UpdateTask(update *model.TaskUpdate) {
 		return
 	}
 
-	metricsCopy := *task
+	go m.metrics.UpdateTask(*task, update)
 
-	// if update is nil, then we just wanted to update metrics
-	if update != nil {
-		if err := task.ApplyUpdate(update); err != nil {
-			log.LogWarn(errors.Wrap(err, "update.Manager failed to ApplyUpdate").Error())
-		}
-
-		if err := m.storage.Update(*task); err != nil {
-			log.LogError(errors.Wrap(err, "failed to m.storage.Update"))
-		}
-
-		m.updateListeners(task)
+	if err := task.ApplyUpdate(update, true); err != nil {
+		log.LogWarn(errors.Wrap(err, "update.Manager failed to ApplyUpdate").Error())
 	}
 
-	go m.metrics.UpdateTask(metricsCopy, update)
+	if err := m.storage.Update(*task); err != nil {
+		log.LogError(errors.Wrap(err, "failed to m.storage.Update"))
+	}
+
+	m.updateListeners(task)
 }
 
-// GetListener gets a channel to listen to task updates
+// GetListener gets a channel to listen to task updates, immediately updates the listener with the current state
 func (m *Manager) GetListener(taskUUID string) chan model.Task {
 	m.lock.Lock()
 	defer m.lock.Unlock()
+
+	task, err := m.storage.Get(taskUUID)
+	if err != nil {
+		log.LogWarn(errors.Wrap(err, "GetListener failed to storage.Get, listener will not get current state").Error())
+	}
 
 	var listener *taskListener
 
@@ -85,6 +85,10 @@ func (m *Manager) GetListener(taskUUID string) chan model.Task {
 
 	// allow 64 updates to buffer
 	listenerChan := make(chan model.Task, 64)
+
+	if task != nil {
+		listenerChan <- *task
+	}
 
 	listener.listenerChans = append(listener.listenerChans, listenerChan)
 
