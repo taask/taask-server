@@ -71,8 +71,22 @@ func (rs *RunnerService) RegisterRunner(req *model.RegisterRunnerRequest, stream
 	for {
 		task := <-tasksChan
 
+		update := model.TaskUpdate{
+			Status:     model.TaskStatusQueued,
+			RunnerUUID: runner.UUID,
+		}
+
+		// if uuid is "", then it's a heartbeat
 		if task.UUID != "" {
-			log.LogInfo(fmt.Sprintf("runner %s handling task %s", runner.UUID, task.UUID))
+			var updateErr error
+			update, updateErr = task.Update(update)
+
+			if updateErr != nil {
+				log.LogError(errors.Wrap(updateErr, "RegisterRunner failed to task.Update"))
+				continue
+			}
+
+			log.LogInfo(fmt.Sprintf("sending task %s to runner %s", task.UUID, runner.UUID))
 		} else {
 			log.LogInfo(fmt.Sprintf("sending runner %s heartbeat", runner.UUID))
 		}
@@ -81,10 +95,15 @@ func (rs *RunnerService) RegisterRunner(req *model.RegisterRunnerRequest, stream
 			log.LogError(errors.Wrap(err, "failed to stream.Send"))
 
 			if task.UUID != "" {
-				rs.Manager.ScheduleTaskRetry(task)
+				rs.Manager.Updater.UpdateTask(update) // persist the queued update so that the task goes waiting -> queued -> retrying
+				log.LogInfo(fmt.Sprintf("task %s is dead, a retry worker should be started for it", task.UUID))
 			}
 
 			break
+		}
+
+		if task.UUID != "" {
+			rs.Manager.Updater.UpdateTask(update)
 		}
 	}
 
@@ -95,7 +114,12 @@ func (rs *RunnerService) RegisterRunner(req *model.RegisterRunnerRequest, stream
 func (rs *RunnerService) UpdateTask(ctx context.Context, req *model.TaskUpdate) (*Empty, error) {
 	defer log.LogTrace(fmt.Sprintf("UpdateTask task %s", req.UUID))()
 
-	rs.Manager.Updater.UpdateTask(req)
+	if err := rs.checkTaskVersion(req); err != nil {
+		log.LogError(errors.Wrap(err, "failed to checkTaskVersion"))
+		return &Empty{}, nil
+	}
+
+	rs.Manager.Updater.UpdateTask(*req)
 
 	return &Empty{}, nil
 }
@@ -107,4 +131,17 @@ func startRunnerHeartbeat(taskChan chan *model.Task) {
 
 		taskChan <- &model.Task{}
 	}
+}
+
+func (rs *RunnerService) checkTaskVersion(update *model.TaskUpdate) error {
+	task, err := rs.Manager.GetTask(update.UUID)
+	if err != nil {
+		return errors.Wrap(err, "failed to storage.Get")
+	}
+
+	if update.Version != task.Meta.Version+1 {
+		return fmt.Errorf("runner tried to apply update with version %d to task %s with version %d", update.Version, task.UUID, task.Meta.Version)
+	}
+
+	return nil
 }

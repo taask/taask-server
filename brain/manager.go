@@ -103,18 +103,13 @@ func (m *Manager) ScheduleTask(task *model.Task) (string, error) {
 	return task.UUID, nil
 }
 
-// ScheduleTaskRetry schedules a task to be retried
-func (m *Manager) ScheduleTaskRetry(task *model.Task) {
-	go m.scheduler.ScheduleTask(task)
-}
-
 // GetTask gets a task from storage
 func (m *Manager) GetTask(uuid string) (*model.Task, error) {
 	return m.storage.Get(uuid)
 }
 
 // UpdateTask applies a task update from a runner
-func (m *Manager) UpdateTask(update *model.TaskUpdate) error {
+func (m *Manager) UpdateTask(update model.TaskUpdate) error {
 	if update.RunnerUUID != "" {
 		return errors.New("RunnerUUID is immutable")
 	}
