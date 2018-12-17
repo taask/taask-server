@@ -15,17 +15,7 @@ type retryTaskWorker struct {
 	nowChan chan bool
 }
 
-// StartRetryWorker starts a retryWorker for a task
-func (sm *Manager) StartRetryWorker(taskUUID string) {
-	// sm.retryLock.Lock()
-	// _, exists := sm.retrying[taskUUID]
-	// sm.retryLock.Unlock()
-
-	// if exists {
-	// 	log.LogInfo(fmt.Sprintf("retry worker for task %s already exists, canceling", taskUUID))
-	// 	return
-	// }
-
+func (sm *Manager) startRetryWorker(taskUUID string) {
 	listener := sm.updater.GetListener(taskUUID)
 	task := <-listener // just get the first update, which will be the task's state when the listener was created
 

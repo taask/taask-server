@@ -67,7 +67,6 @@ func (m *Manager) RegisterRunner(runner *model.Runner, challengeSignature *simpl
 
 // UnregisterRunner unregisters a runner
 func (m *Manager) UnregisterRunner(runner *model.Runner) {
-	// TODO: reassign currently running tasks
 	if err := m.scheduler.UnregisterRunner(runner.Kind, runner.UUID); err != nil {
 		log.LogError(errors.Wrap(err, "failed to UnregisterRunner"))
 	}

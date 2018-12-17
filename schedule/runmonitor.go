@@ -29,7 +29,7 @@ func (sm *Manager) startRunMonitor(taskUUID string, runnerPool *runnerPool) {
 	if task, err := monitor.start(updateChan); err != nil {
 		log.LogWarn(err.Error())
 
-		sm.StartRetryWorker(task.UUID)
+		sm.startRetryWorker(task.UUID)
 	}
 
 	sm.runningLock.Lock()
@@ -49,7 +49,7 @@ func (rm *runMonitor) start(updateChan chan model.Task) (*model.Task, error) {
 		case task = <-updateChan:
 			// continue
 		case <-timeoutChan:
-			if task.Status != model.TaskStatusRetrying {
+			if !task.IsRetrying() {
 				// if the timeout is thrown but the task is already retrying, don't throw an error
 				return &task, fmt.Errorf("task %s not completed before timeout", rm.taskUUID)
 			}
@@ -70,7 +70,7 @@ func (rm *runMonitor) start(updateChan chan model.Task) (*model.Task, error) {
 			go rm.startTimeout(timeoutChan)
 		}
 
-		if task.Status == model.TaskStatusRetrying {
+		if task.IsRetrying() {
 			log.LogInfo(fmt.Sprintf("task %s began retrying, updating runner %s tracker", task.UUID, task.Meta.RunnerUUID))
 
 			if task.Meta.RunnerUUID != "" {

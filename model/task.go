@@ -92,6 +92,11 @@ func (t *Task) IsNotStarted() bool {
 	return t.Status == TaskStatusWaiting || t.Status == TaskStatusRetrying
 }
 
+// IsRetrying is if a task hasn't even tried to run yet (hasn't been assigned a runner)
+func (t *Task) IsRetrying() bool {
+	return t.Status == TaskStatusRetrying
+}
+
 // IsRunning is if the task is in the process of being run (has been assigned a runner)
 func (t *Task) IsRunning() bool {
 	return t.Status == TaskStatusQueued || t.Status == TaskStatusRunning

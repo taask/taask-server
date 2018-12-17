@@ -10,13 +10,13 @@ import (
 )
 
 // RegisterRunner registers the existence of a runner
-func (m *Manager) RegisterRunner(runner *model.Runner) {
+func (sm *Manager) RegisterRunner(runner *model.Runner) {
 	defer log.LogTrace("RegisterRunner")()
 
-	pool, ok := m.runnerPools[runner.Kind]
+	pool, ok := sm.runnerPools[runner.Kind]
 	if !ok {
 		pool = newRunnerPool()
-		m.runnerPools[runner.Kind] = pool
+		sm.runnerPools[runner.Kind] = pool
 	}
 
 	go pool.addRunner(runner)
@@ -24,10 +24,10 @@ func (m *Manager) RegisterRunner(runner *model.Runner) {
 
 // UnregisterRunner removes a runner from eligibility
 // this contains some lock-contentious calls, but we're ok if it's slow if it means that we never lose a task
-func (m *Manager) UnregisterRunner(runnerKind, uuid string) error {
+func (sm *Manager) UnregisterRunner(runnerKind, uuid string) error {
 	defer log.LogTrace("UnregisterRunner")()
 
-	pool, ok := m.runnerPools[runnerKind]
+	pool, ok := sm.runnerPools[runnerKind]
 	if !ok {
 		return fmt.Errorf("no runner pool of Kind %s found", runnerKind)
 	}
@@ -38,7 +38,7 @@ func (m *Manager) UnregisterRunner(runnerKind, uuid string) error {
 
 		for i := range deadTasks {
 			log.LogInfo(fmt.Sprintf("starting retry worker for dead task %s", deadTasks[i]))
-			m.StartRetryWorker(deadTasks[i])
+			sm.startRetryWorker(deadTasks[i])
 		}
 	}
 
@@ -60,7 +60,7 @@ type runnerLoad struct {
 	// UUID is the uuid of the runner
 	UUID string
 
-	// AssignedCount is the number of tasks queued and running on a runner
+	// AssignedTasks are the tasks queued and running on a runner
 	AssignedTasks map[string]string
 }
 
@@ -116,7 +116,6 @@ func (rp *runnerPool) assignTaskToNextRunner(task *model.Task) (*model.Runner, e
 	runnerTracker := elem.Value.(*runnerLoad)
 
 	if runnerTracker.AssignedCount() >= 10 {
-		rp.print()
 		return nil, ErrorCapacityReached
 	}
 

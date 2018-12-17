@@ -62,115 +62,94 @@ func NewManager(updater *update.Manager) *Manager {
 }
 
 // Start begins the scheduler
-func (m *Manager) Start() {
+func (sm *Manager) Start() {
 	defer log.LogTrace("schedule.Manager.Start()")()
 
 	for {
-		m.queueNewTaskIfExists()
+		sm.queueNewTaskIfExists()
 
-		nextTask := m.nextQueued()
+		nextTask := sm.nextQueued()
 		if nextTask == nil {
-			m.queueNewTaskUntilExists()
+			sm.queueNewTaskUntilExists()
 			continue
 		}
 
-		m.runningLock.Lock()
-		_, exists := m.running[nextTask.UUID]
-		m.runningLock.Unlock()
+		sm.runningLock.Lock()
+		_, exists := sm.running[nextTask.UUID]
+		sm.runningLock.Unlock()
 
-		if exists {
-			if nextTask.Status != model.TaskStatusRetrying {
-				log.LogWarn(fmt.Sprintf("attempted to schedule task %s in state %s that has already been scheduled", nextTask.UUID, nextTask.Status))
-				continue
-			}
+		if exists && !nextTask.IsRetrying() {
+			log.LogWarn(fmt.Sprintf("attempted to schedule task %s in state %s that has already been scheduled", nextTask.UUID, nextTask.Status))
+			continue
 		}
 
-		runnerPool, ok := m.runnerPools[nextTask.Kind]
+		runnerPool, ok := sm.runnerPools[nextTask.Kind]
 		if !ok {
 			log.LogWarn(fmt.Sprintf("schedule task %s: no runners of Kind %s registered", nextTask.UUID, nextTask.Kind))
-			m.StartRetryWorker(nextTask.UUID)
+			sm.startRetryWorker(nextTask.UUID)
 			continue
 		}
 
 		runner, err := runnerPool.assignTaskToNextRunner(nextTask)
 		if err != nil {
 			log.LogWarn(errors.Wrap(err, fmt.Sprintf("schedule task %s: no runners of Kind %s available", nextTask.UUID, nextTask.Kind)).Error())
-			m.StartRetryWorker(nextTask.UUID)
+			sm.startRetryWorker(nextTask.UUID)
 			continue
 		}
 
-		go m.startRunMonitor(nextTask.UUID, runnerPool)
+		go sm.startRunMonitor(nextTask.UUID, runnerPool)
 
 		runner.TaskChannel <- nextTask
 	}
 }
 
 // ScheduleTask schedules a task
-func (m *Manager) ScheduleTask(task *model.Task) {
+func (sm *Manager) ScheduleTask(task *model.Task) {
 	defer log.LogTrace(fmt.Sprintf("ScheduleTask %s", task.UUID))()
 
-	m.scheduleChan <- task
+	sm.scheduleChan <- task
 }
 
 // TODO: determine if this should flush the channel or not
-func (m *Manager) queueNewTaskIfExists() {
+func (sm *Manager) queueNewTaskIfExists() {
 	select {
-	case task := <-m.scheduleChan:
-		m.queueLock.Lock()
-		defer m.queueLock.Unlock()
+	case task := <-sm.scheduleChan:
+		sm.queueLock.Lock()
+		defer sm.queueLock.Unlock()
 
-		m.queued.PushBack(task)
+		sm.queued.PushBack(task)
 	default:
 		return
 	}
 }
 
-func (m *Manager) queueNewTaskUntilExists() {
-	task := <-m.scheduleChan
+func (sm *Manager) queueNewTaskUntilExists() {
+	task := <-sm.scheduleChan
 
-	m.queueLock.Lock()
-	defer m.queueLock.Unlock()
+	sm.queueLock.Lock()
+	defer sm.queueLock.Unlock()
 
-	m.queued.PushBack(task)
+	sm.queued.PushBack(task)
 }
 
-func (m *Manager) nextQueued() *model.Task {
-	m.queueLock.Lock()
-	defer m.queueLock.Unlock()
+func (sm *Manager) nextQueued() *model.Task {
+	sm.queueLock.Lock()
+	defer sm.queueLock.Unlock()
 
-	if m.queued.Len() > 0 {
-		task := m.queued.Remove(m.queued.Front()).(*model.Task)
+	if sm.queued.Len() > 0 {
+		task := sm.queued.Remove(sm.queued.Front()).(*model.Task)
 		return task
 	}
 
 	return nil
 }
 
-// func (m *Manager) requeueTask(task *model.Task) {
-// 	m.queueLock.Lock()
-// 	defer m.queueLock.Unlock()
-
-// 	log.LogInfo(fmt.Sprintf("requeing task %s", task.UUID))
-
-// 	if m.queued.Len() == 0 {
-// 		m.ScheduleTask(task) // if there's nothing, then the run loop will be waiting for a new scheduled task before continuing
-// 		return
-// 	}
-
-// 	e := m.queued.Front()
-// 	for i := 0; i < m.queued.Len()/3 && e.Next() != nil; i++ {
-// 		e = e.Next()
-// 	}
-
-// 	m.queued.InsertAfter(task, e)
-// }
-
-func (m *Manager) forceRetry() {
-	m.retryLock.Lock()
-	defer m.retryLock.Unlock()
+func (sm *Manager) forceRetry() {
+	sm.retryLock.Lock()
+	defer sm.retryLock.Unlock()
 
 	// range over the map to get a "random" one
-	for uuid, worker := range m.retrying {
+	for uuid, worker := range sm.retrying {
 		log.LogInfo(fmt.Sprintf("releasing retry worker for task %s", uuid))
 
 		go worker.retryNow()
