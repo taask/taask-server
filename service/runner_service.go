@@ -39,14 +39,24 @@ type RunnerService struct {
 }
 
 // AuthRunner allows a runner to advertise itself and perform auth with the server
-func (rs *RunnerService) AuthRunner(ctx context.Context, req *model.AuthRunnerRequest) (*model.AuthRunnerResponse, error) {
+func (rs *RunnerService) AuthRunner(ctx context.Context, req *AuthRunnerRequest) (*AuthRunnerResponse, error) {
 	defer log.LogTrace("AuthRunner")()
 
-	return rs.Manager.AuthRunner(req)
+	encRunnerChallenge, err := rs.Manager.AuthRunner(req.PubKey, req.JoinCodeSignature)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &AuthRunnerResponse{
+		EncChallenge:    encRunnerChallenge.EncChallenge,
+		EncChallengeKey: encRunnerChallenge.EncChallengeKey,
+	}
+
+	return resp, nil
 }
 
 // RegisterRunner allows a runner to connect (with a valid session) get a stream of tasks to execute
-func (rs *RunnerService) RegisterRunner(req *model.RegisterRunnerRequest, stream RunnerService_RegisterRunnerServer) error {
+func (rs *RunnerService) RegisterRunner(req *RegisterRunnerRequest, stream RunnerService_RegisterRunnerServer) error {
 	defer log.LogTrace(fmt.Sprintf("RegisterRunner kind %s", req.Kind))()
 
 	tasksChan := make(chan *model.Task, 128)
@@ -78,6 +88,14 @@ func (rs *RunnerService) RegisterRunner(req *model.RegisterRunnerRequest, stream
 
 		// if uuid is "", then it's a heartbeat
 		if task.UUID != "" {
+			runnerEncKey, err := rs.Manager.EncryptTaskKeyForRunner(runner.UUID, task.Meta.MasterEncTaskKey)
+			if err != nil {
+				log.LogError(errors.Wrap(err, "failed to ReEncryptTaskKey"))
+				continue
+			}
+
+			update.RunnerEncTaskKey = runnerEncKey
+
 			var updateErr error
 			update, updateErr = task.Update(update)
 

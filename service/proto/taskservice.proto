@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+import "model/proto/task.proto";
+
+package taask.server.service;
+option go_package = "github.com/taask/taask-server/service";
+
+service TaskService {
+	rpc Queue (taask.server.model.Task) returns (QueueTaskResponse);
+	rpc CheckTask(CheckTaskRequest) returns (stream CheckTaskResponse);
+}
+
+message QueueTaskResponse {
+	string UUID = 1;
+}
+
+message CheckTaskRequest {
+	string UUID = 1;
+}
+
+message CheckTaskResponse {
+	string status = 1;
+	int32 progress = 2;
+	taask.server.model.TaskUpdate result = 3;
+}

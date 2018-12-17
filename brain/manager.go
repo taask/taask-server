@@ -38,7 +38,11 @@ func NewManager(joinCode string, storage storage.Manager) *Manager {
 	scheduler := schedule.NewManager(updater)
 	go scheduler.Start()
 
-	runnerAuth := auth.NewRunnerAuthManager(joinCode)
+	runnerAuth, err := auth.NewRunnerAuthManager(joinCode)
+	if err != nil {
+		log.LogError(errors.Wrap(err, "failed to NewRunnerAuthManager"))
+		return nil
+	}
 
 	return &Manager{
 		scheduler:  scheduler,
@@ -50,13 +54,13 @@ func NewManager(joinCode string, storage storage.Manager) *Manager {
 }
 
 // AuthRunner allows a runner to auth
-func (m *Manager) AuthRunner(authReq *model.AuthRunnerRequest) (*model.AuthRunnerResponse, error) {
-	return m.runnerAuth.AttemptAuth(authReq.PubKey, authReq.JoinCodeSignature)
+func (m *Manager) AuthRunner(pubKey *simplcrypto.SerializablePubKey, joinCodeSig *simplcrypto.Signature) (*auth.EncRunnerAuth, error) {
+	return m.runnerAuth.AttemptAuth(pubKey, joinCodeSig)
 }
 
 // RegisterRunner registers a runner with the manager's scheduler
 func (m *Manager) RegisterRunner(runner *model.Runner, challengeSignature *simplcrypto.Signature) error {
-	if err := m.runnerAuth.CheckRunnerChallenge(challengeSignature); err != nil {
+	if err := m.runnerAuth.CheckRunnerAuth(runner.UUID, challengeSignature); err != nil {
 		return errors.Wrap(err, "failed to CheckRunnerChallenge")
 	}
 
@@ -70,6 +74,20 @@ func (m *Manager) UnregisterRunner(runner *model.Runner) {
 	if err := m.scheduler.UnregisterRunner(runner.Kind, runner.UUID); err != nil {
 		log.LogError(errors.Wrap(err, "failed to UnregisterRunner"))
 	}
+
+	if err := m.runnerAuth.DeleteRunnerKey(runner.UUID); err != nil {
+		log.LogError(errors.Wrap(err, "failed to DeleteRunnerKey"))
+	}
+}
+
+// EncryptTaskKeyForRunner encrypts a task key for a runner
+func (m *Manager) EncryptTaskKeyForRunner(runnerUUID string, encTaskKey *simplcrypto.Message) (*simplcrypto.Message, error) {
+	encKey, err := m.runnerAuth.ReEncryptTaskKey(runnerUUID, encTaskKey)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to ReEncryptTaskKey")
+	}
+
+	return encKey, nil
 }
 
 // ScheduleTask schedules and persists a task

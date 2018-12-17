@@ -8,12 +8,16 @@ import (
 	"github.com/cohix/simplcrypto"
 	log "github.com/cohix/simplog"
 	"github.com/pkg/errors"
-	"github.com/taask/taask-server/model"
 )
 
 const (
 	joinCodeWritePath = "/taask/config/joincode"
 )
+
+type runnerAuth struct {
+	Challenge []byte
+	PubKey    *simplcrypto.KeyPair
+}
 
 // RunnerAuthManager manages the auth of runners
 type RunnerAuthManager struct {
@@ -21,36 +25,46 @@ type RunnerAuthManager struct {
 	JoinCode string
 
 	// tracks signatures already used for auth to prevent replay auths
+	// TODO: nuke this and use a nonce
 	usedSignatures []*simplcrypto.Signature
 
-	// maps
-	authedRunnerChallenges map[string]*runnerChallenge
+	// maps pubkey KIDs to runnerAuths
+	authedRunners map[string]*runnerAuth
+
+	// maps runners to their pubkeys
+	activeRunnerKeys map[string]*simplcrypto.KeyPair
+
+	// the keypair used to transfer access to task data to runners
+	runnerMasterKeyPair *simplcrypto.KeyPair
 }
 
-// EncRunnerChallenge is sent back to the runner as an auth challenge
-type EncRunnerChallenge struct {
+// EncRunnerAuth is sent back to the runner as an auth challenge
+type EncRunnerAuth struct {
 	EncChallenge    *simplcrypto.Message
 	EncChallengeKey *simplcrypto.Message
 }
 
-type runnerChallenge struct {
-	Challenge []byte
-	PubKey    *simplcrypto.KeyPair
-}
-
 // NewRunnerAuthManager returns a new RunnerAuthManager
-func NewRunnerAuthManager(joinCode string) *RunnerAuthManager {
+func NewRunnerAuthManager(joinCode string) (*RunnerAuthManager, error) {
 	defer writeJoinCode(joinCode)
 
-	return &RunnerAuthManager{
-		JoinCode:               joinCode,
-		usedSignatures:         []*simplcrypto.Signature{},
-		authedRunnerChallenges: make(map[string]*runnerChallenge),
+	masterPair, err := simplcrypto.GenerateMasterKeyPair()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to GenerateMasterKeyPair")
 	}
+
+	manager := &RunnerAuthManager{
+		JoinCode:            joinCode,
+		usedSignatures:      []*simplcrypto.Signature{},
+		authedRunners:       make(map[string]*runnerAuth),
+		runnerMasterKeyPair: masterPair,
+	}
+
+	return manager, nil
 }
 
 // AttemptAuth checks the auth request for a runner
-func (am *RunnerAuthManager) AttemptAuth(pubKey *simplcrypto.SerializablePubKey, codeSig *simplcrypto.Signature) (*model.AuthRunnerResponse, error) {
+func (am *RunnerAuthManager) AttemptAuth(pubKey *simplcrypto.SerializablePubKey, codeSig *simplcrypto.Signature) (*EncRunnerAuth, error) {
 	for _, sig := range am.usedSignatures {
 		if sig.KID == codeSig.KID {
 			return nil, errors.New("runner pubKey previously used, generate new pubKey and try again")
@@ -93,14 +107,14 @@ func (am *RunnerAuthManager) AttemptAuth(pubKey *simplcrypto.SerializablePubKey,
 		return nil, errors.Wrap(err, "failed to Encrypt challengeSymKey")
 	}
 
-	runnerChal := &runnerChallenge{
+	runnerChal := &runnerAuth{
 		Challenge: challenge,
 		PubKey:    runnerKey,
 	}
 
-	am.authedRunnerChallenges[runnerKey.KID] = runnerChal
+	am.authedRunners[runnerKey.KID] = runnerChal
 
-	encRunnerChal := &model.AuthRunnerResponse{
+	encRunnerChal := &EncRunnerAuth{
 		EncChallenge:    encChallenge,
 		EncChallengeKey: encChallengeKey,
 	}
@@ -108,20 +122,59 @@ func (am *RunnerAuthManager) AttemptAuth(pubKey *simplcrypto.SerializablePubKey,
 	return encRunnerChal, nil
 }
 
-// CheckRunnerChallenge verifies a challenge signature is legit and then deletes it from existence
-func (am *RunnerAuthManager) CheckRunnerChallenge(chalSig *simplcrypto.Signature) error {
-	challenge, ok := am.authedRunnerChallenges[chalSig.KID]
+// CheckRunnerAuth verifies a challenge signature is legit and then deletes it from existence, retaining the pubkey
+func (am *RunnerAuthManager) CheckRunnerAuth(runnerUUID string, chalSig *simplcrypto.Signature) error {
+	auth, ok := am.authedRunners[chalSig.KID]
 	if !ok {
-		return errors.New(fmt.Sprintf("runner challenge for KID %s does not exist", chalSig.KID))
+		return errors.New(fmt.Sprintf("runner auth for KID %s does not exist", chalSig.KID))
 	}
 
-	if err := challenge.PubKey.Verify(challenge.Challenge, chalSig); err != nil {
+	if err := auth.PubKey.Verify(auth.Challenge, chalSig); err != nil {
 		return errors.Wrap(err, "failed to Verify")
 	}
 
-	delete(am.authedRunnerChallenges, chalSig.KID)
+	am.activeRunnerKeys[runnerUUID] = auth.PubKey
+
+	delete(am.authedRunners, chalSig.KID)
 
 	return nil
+}
+
+// DeleteRunnerKey deletes a runner's pubkey after it's been unregistered
+func (am *RunnerAuthManager) DeleteRunnerKey(uuid string) error {
+	_, ok := am.activeRunnerKeys[uuid]
+	if !ok {
+		return errors.New(fmt.Sprintf("runner %s key does not exist", uuid))
+	}
+
+	delete(am.activeRunnerKeys, uuid)
+
+	return nil
+}
+
+// RunnerMasterPubKey returns the pubkey from the master keypair
+func (am *RunnerAuthManager) RunnerMasterPubKey() *simplcrypto.SerializablePubKey {
+	return am.runnerMasterKeyPair.SerializablePubKey()
+}
+
+// ReEncryptTaskKey re-encrypts a task key using a runner's pubkey
+func (am *RunnerAuthManager) ReEncryptTaskKey(runnerUUID string, encTaskKey *simplcrypto.Message) (*simplcrypto.Message, error) {
+	runnerPubKey, ok := am.activeRunnerKeys[runnerUUID]
+	if !ok {
+		return nil, errors.New(fmt.Sprintf("runner %s key does not exist", runnerUUID))
+	}
+
+	decKeyJSON, err := am.runnerMasterKeyPair.Decrypt(encTaskKey)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to Decrypt task key")
+	}
+
+	reEncKey, err := runnerPubKey.Encrypt(decKeyJSON)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to Encrypt task key")
+	}
+
+	return reEncKey, nil
 }
 
 func writeJoinCode(joinCode string) {

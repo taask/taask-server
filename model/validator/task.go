@@ -15,18 +15,12 @@ func ValidateTask(task *model.Task) *Result {
 		return result
 	}
 
-	if task.Meta.ResultPubKey == nil {
-		result.addProblem("missing ResultPubKey")
-	} else {
-		// TODO: validate pubkey
-	}
-
 	if task.Kind == "" {
 		result.addProblem("Kind is empty")
 	}
 
-	if task.Body == nil || len(task.Body) == 0 {
-		result.addProblem("Body is empty")
+	if task.EncBody == nil || len(task.EncBody.Data) == 0 {
+		result.addProblem("EncBody is empty")
 	}
 
 	return result

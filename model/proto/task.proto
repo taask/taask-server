@@ -1,7 +1,6 @@
 syntax = "proto3";
 
 import "github.com/cohix/simplcrypto/proto/message.proto";
-import "github.com/cohix/simplcrypto/proto/keypair.proto";
 
 package taask.server.model;
 option go_package = "github.com/taask/taask-server/model";
@@ -10,42 +9,30 @@ message Task {
 	TaskMeta Meta = 1;
 	string UUID = 2;
 	string Kind = 3;
-	bytes Body = 4;
-	string Status = 5;
-	simpl.crypto.Message EncResult = 6;
-	simpl.crypto.Message EncResultSymKey = 7;
+	string Status = 4;
+	simpl.crypto.Message EncBody = 5; // encrypted by the task key
+	simpl.crypto.Message EncResult = 6; // encrypted by the task key
 }
 
 message TaskMeta {
 	repeated string Annotations = 1;
 	string RunnerUUID = 2;
 	string ChildRunnerUUID = 3;
-	simpl.crypto.SerializablePubKey ResultPubKey = 4;
-	int32 RetrySeconds = 5;
-	int32 TimeoutSeconds = 6;
-	int32 Version = 7;
-}
-
-message QueueTaskResponse {
-	string UUID = 1;
-}
-
-message CheckTaskRequest {
-	string UUID = 1;
-}
-
-message CheckTaskResponse {
-	string status = 1;
-	int32 progress = 2;
-	TaskUpdate result = 3;
+	simpl.crypto.Message MasterEncTaskKey = 4; // the task key encrypted by the master runner pubkey
+	simpl.crypto.Message RunnerEncTaskKey = 5; // the task key encrypted by the assigned runner's pubkey
+	simpl.crypto.Message ClientEncTaskKey = 6; // the task key encrypted by the client keypair
+	int32 RetrySeconds = 7;
+	int32 TimeoutSeconds = 8;
+	int32 Version = 9;
 }
 
 message TaskUpdate {
 	string UUID = 1;
 	string status = 2;
 	simpl.crypto.Message EncResult = 3;
-	simpl.crypto.Message EncResultSymKey = 4;
+	simpl.crypto.Message RunnerEncTaskKey = 4;
 	string RunnerUUID = 5;
-	int32 RetrySeconds = 6;
-	int32 Version = 7;
+	string ChildRunnerUUID = 6;
+	int32 RetrySeconds = 7;
+	int32 Version = 8;
 }
