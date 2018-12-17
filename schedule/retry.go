@@ -44,20 +44,36 @@ func (sm *Manager) startRetryWorker(taskUUID string) {
 	sm.updater.UpdateTask(update)
 
 	go func() {
-		select {
-		case <-time.After(time.Second * time.Duration(retrySeconds)):
-			// run the task
-		case <-worker.nowChan:
-			// ignore the timer and run the task
+		for {
+			select {
+			case task = <-listener:
+				if task.IsRunning() || task.IsFinished() {
+					log.LogInfo(fmt.Sprintf("retry monitor for task %s detected task with staus %s, canceling", task.UUID, task.Status))
+
+					sm.retryLock.Lock()
+					delete(sm.retrying, taskUUID)
+					sm.retryLock.Unlock()
+
+					break
+				}
+
+				continue
+			case <-time.After(time.Second * time.Duration(retrySeconds)):
+				// run the task
+			case <-worker.nowChan:
+				// ignore the timer and run the task
+			}
+
+			log.LogInfo(fmt.Sprintf("task %s retrying after %d seconds", taskUUID, retrySeconds))
+
+			sm.ScheduleTask(&task)
+
+			sm.retryLock.Lock()
+			delete(sm.retrying, taskUUID)
+			sm.retryLock.Unlock()
+
+			break
 		}
-
-		log.LogInfo(fmt.Sprintf("task %s retrying after %d seconds", taskUUID, retrySeconds))
-
-		sm.ScheduleTask(&task)
-
-		sm.retryLock.Lock()
-		delete(sm.retrying, taskUUID)
-		sm.retryLock.Unlock()
 	}()
 }
 

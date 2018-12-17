@@ -49,7 +49,7 @@ func (rm *runMonitor) start(updateChan chan model.Task) (*model.Task, error) {
 		case task = <-updateChan:
 			// continue
 		case <-timeoutChan:
-			if !task.IsRetrying() {
+			if !task.IsRetrying() && !task.IsFinished() {
 				// if the timeout is thrown but the task is already retrying, don't throw an error
 				return &task, fmt.Errorf("task %s not completed before timeout", rm.taskUUID)
 			}
