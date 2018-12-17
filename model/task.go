@@ -56,7 +56,6 @@ func (t *Task) ApplyUpdate(update TaskUpdate, logIt bool) error {
 
 	if update.EncResult != nil {
 		t.EncResult = update.EncResult
-		t.EncResultSymKey = update.EncResultSymKey
 	}
 
 	if update.Status != "" && t.Status != update.Status {
@@ -75,6 +74,14 @@ func (t *Task) ApplyUpdate(update TaskUpdate, logIt bool) error {
 			log.LogInfo(fmt.Sprintf("task %s assigned to runner %s", t.UUID, update.RunnerUUID))
 		}
 		t.Meta.RunnerUUID = update.RunnerUUID
+	}
+
+	if update.RunnerEncTaskKey != nil && t.Meta.RunnerEncTaskKey != update.RunnerEncTaskKey {
+		if logIt {
+			log.LogInfo(fmt.Sprintf("task %s runner key updated (message encrypted with KID %s)", t.UUID, t.Meta.RunnerEncTaskKey.KID))
+		}
+
+		t.Meta.RunnerEncTaskKey = update.RunnerEncTaskKey
 	}
 
 	if update.RetrySeconds != 0 && t.Meta.RetrySeconds != update.RetrySeconds {

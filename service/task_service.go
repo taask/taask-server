@@ -37,13 +37,13 @@ type TaskService struct {
 }
 
 // Queue handles queuing up a task to be distributed to runners
-func (ts TaskService) Queue(ctx context.Context, task *model.Task) (*model.QueueTaskResponse, error) {
+func (ts TaskService) Queue(ctx context.Context, task *model.Task) (*QueueTaskResponse, error) {
 	uuid, err := ts.Manager.ScheduleTask(task)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to ScheduleTask")
 	}
 
-	resp := &model.QueueTaskResponse{
+	resp := &QueueTaskResponse{
 		UUID: uuid,
 	}
 
@@ -51,36 +51,43 @@ func (ts TaskService) Queue(ctx context.Context, task *model.Task) (*model.Queue
 }
 
 // CheckTask handles returning the state of a queued or running task to a client
-func (ts TaskService) CheckTask(req *model.CheckTaskRequest, stream TaskService_CheckTaskServer) error {
+func (ts TaskService) CheckTask(req *CheckTaskRequest, stream TaskService_CheckTaskServer) error {
 	task, err := ts.Manager.GetTask(req.UUID)
 	if err != nil {
 		return errors.Wrap(err, "failed to GetTask")
 	}
 
+	status := ""
+
 	listener := ts.Manager.Updater.GetListener(req.UUID)
 
 	for {
-		update := &model.TaskUpdate{
-			UUID:   task.UUID,
-			Status: task.Status,
+		// only send the update if the status has changed
+		if task.Status != status {
+			status = task.Status
+
+			// TODO: make this more comprehensive
+			update := &model.TaskUpdate{
+				UUID:   task.UUID,
+				Status: task.Status,
+			}
+
+			if task.EncResult != nil {
+				update.EncResult = task.EncResult
+			}
+
+			resp := &CheckTaskResponse{
+				Status: task.Status,
+				Result: update,
+			}
+
+			if err := stream.Send(resp); err != nil {
+				log.LogError(errors.Wrap(err, "failed to Send"))
+				return err
+			}
 		}
 
-		if task.EncResult != nil {
-			update.EncResult = task.EncResult
-			update.EncResultSymKey = task.EncResultSymKey
-		}
-
-		resp := &model.CheckTaskResponse{
-			Status: task.Status,
-			Result: update,
-		}
-
-		if err := stream.Send(resp); err != nil {
-			log.LogError(errors.Wrap(err, "failed to Send"))
-			return err
-		}
-
-		if resp.Status == model.TaskStatusCompleted {
+		if task.IsFinished() {
 			break
 		}
 
