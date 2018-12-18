@@ -74,8 +74,8 @@ Runners communicate with taask-server using gRPC, and bi-directionally stream da
 Tasks are scheduled to runners, they are executed, and the results returned.
 Runners can be written in any language using first-party and third-party runner libraries.
 
-	- [runner-k8s](https://github.com/taask/runner-k8s): Runs tasks as Kubernetes Jobs using container images
-	- [runner-golang](https://github.com/taask/runner-golang): Go library for developing custom runners
+- [runner-k8s](https://github.com/taask/runner-k8s): Runs tasks as Kubernetes Jobs using container images
+- [runner-golang](https://github.com/taask/runner-golang): Go library for developing custom runners
 
 ### Child Runners
 Runners such as runner-k8s can delegate tasks to _child runners_, which are short-lived, ephemeral runners meant to execute one task in their lifetime.
@@ -85,7 +85,7 @@ Clients generate tasks, which are arbitrary JSON, and send them to taask-server 
 Clients can stream task status updates from taask-server.
 Clients encrypt task data before submitting them, ensuring tasks are never transmitted or stored in a decrypted state.
 
-	- [client-golang](https://github.com/taask/client-golang): Go library for producing tasks and communicating with taask-server
+- [client-golang](https://github.com/taask/client-golang): Go library for producing tasks and communicating with taask-server
 
 ### Tasks
 Tasks are arbitrary JSON. Clients produce tasks, runners use the task JSON as input for their `Run` function, and return arbitrary result JSON.
@@ -97,7 +97,7 @@ Task data is opaque and encrypted in transit and at rest. Security is the top pr
 	- The _task key_ and _task keypair_ are cached in the memory of the client who created the task. Eventually, the _task keypair_ will be optionally stored in a shared location, accessible to any clients with access to the storage. This will allow clients to become more ephemeral.
 - The _task key_ is also encrypted with the _master runner public key_. Both encrypted versions of the _task key_ are sent with the task.
 - Task data remains encrypted until it is recieved by the runner, at which point it is decrypted and provided to the `Run` function of the runner. 
-  - If the assigned runner delegates the task, the task JSON is not decrypted until it reaches its child runner.
+	- If the assigned runner delegates the task, the task JSON is not decrypted until it reaches its child runner.
 - taask-server owns the _master runner private key_, and can decrypt the _task key_.
 - Every runner and child runner generates a _runner keypair_ upon startup, used to authenticate with taask-server and decrypt task data.
 - When a task is assigned to a runner, taask-server re-encrypts the _task key_ using the runner's _runner public key_
