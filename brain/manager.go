@@ -90,6 +90,11 @@ func (m *Manager) EncryptTaskKeyForRunner(runnerUUID string, encTaskKey *simplcr
 	return encKey, nil
 }
 
+// GetMasterRunnerPubKey returns the master runner pubkey
+func (m *Manager) GetMasterRunnerPubKey() *simplcrypto.SerializablePubKey {
+	return m.runnerAuth.RunnerMasterPubKey()
+}
+
 // ScheduleTask schedules and persists a task
 func (m *Manager) ScheduleTask(task *model.Task) (string, error) {
 	if result := validator.ValidateTask(task); !result.Ok() {

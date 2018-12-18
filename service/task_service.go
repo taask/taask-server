@@ -36,6 +36,15 @@ type TaskService struct {
 	Manager *brain.Manager
 }
 
+// AuthClient handles authenticating a client
+func (ts TaskService) AuthClient(ctx context.Context, req *AuthClientRequest) (*AuthClientResponse, error) {
+	resp := &AuthClientResponse{
+		MasterRunnerPubKey: ts.Manager.GetMasterRunnerPubKey(),
+	}
+
+	return resp, nil
+}
+
 // Queue handles queuing up a task to be distributed to runners
 func (ts TaskService) Queue(ctx context.Context, task *model.Task) (*QueueTaskResponse, error) {
 	uuid, err := ts.Manager.ScheduleTask(task)
@@ -77,8 +86,9 @@ func (ts TaskService) CheckTask(req *CheckTaskRequest, stream TaskService_CheckT
 			}
 
 			resp := &CheckTaskResponse{
-				Status: task.Status,
-				Result: update,
+				Status:     task.Status,
+				EncTaskKey: task.Meta.ClientEncTaskKey,
+				Result:     update,
 			}
 
 			if err := stream.Send(resp); err != nil {

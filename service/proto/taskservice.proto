@@ -2,13 +2,24 @@ syntax = "proto3";
 
 import "model/proto/task.proto";
 import "github.com/cohix/simplcrypto/proto/message.proto";
+import "github.com/cohix/simplcrypto/proto/keypair.proto";
 
 package taask.server.service;
 option go_package = "github.com/taask/taask-server/service";
 
 service TaskService {
+	rpc AuthClient(AuthClientRequest) returns (AuthClientResponse);
 	rpc Queue (taask.server.model.Task) returns (QueueTaskResponse);
 	rpc CheckTask(CheckTaskRequest) returns (stream CheckTaskResponse);
+}
+
+message AuthClientRequest {
+	simpl.crypto.Signature JoinCodeSignature = 1;
+	simpl.crypto.SerializablePubKey PubKey = 2;
+}
+
+message AuthClientResponse {
+	simpl.crypto.SerializablePubKey MasterRunnerPubKey = 1;
 }
 
 message QueueTaskResponse {
