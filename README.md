@@ -11,15 +11,27 @@ Taask Core is an open source system for running arbitrary jobs on any infrastruc
 - :white_check_mark: Runs those tasks in a fault tolerant way
 - :white_check_mark: Operates with no single point of failure
 - :white_check_mark: Operates on any infrastructure
-- :white_check_mark: Keeps task data encrypted, end to end
+- :white_check_mark: Keeps task data encrypted, in transit and at rest
 
 ## What doesn't it do?
 - :no_entry_sign: Act as a message bus
 - :no_entry_sign: Replace Kubernetes
 - :no_entry_sign: Orchestrate servers
 
+## But is it serverless?
+That depends on your definition, but in general, no. If you deploy the control plane and autoscale it, and use a runner that delegates to containers (such as runner-k8s), then it resembles serverless since it scales to 0 and allows for usage-based compute.
+
+More precisely, Taask Core is a Functions-as-a-service platform that is tuned towards heavy, long-running workloads. Taask does stand for "Tasks as a service... k", after all :smile:
+
 ## Project status
-:warning: Taask is in *Alpha* (v0.0.4) and should not be used for critical workloads
+:warning: Taask is in *pre-Alpha* and should not be used for critical workloads. When all critical components have been implemented, and the platform's security has been fully reviewed, it will graduate to alpha.
+
+Taask Core has three goals:
+- Security
+- Reliability
+- Speed
+
+Taask Core will not graduate to alpha until its security has been proven. It will not graduate to beta until its reliability has been proven. It will not graduate to stable until it has been further optimized for production traffic without compromising security or reliability. This is the guiding principle the project follows.
 
 ## Components
 Taask Core is comprised of three components:
@@ -62,8 +74,8 @@ Runners communicate with taask-server using gRPC, and bi-directionally stream da
 Tasks are scheduled to runners, they are executed, and the results returned.
 Runners can be written in any language using first-party and third-party runner libraries.
 
-  - [runner-k8s](https://github.com/taask/runner-k8s): Runs tasks as Kubernetes Jobs using container images
-  - [runner-golang](https://github.com/taask/runner-golang): Go library for developing custom runners
+	- [runner-k8s](https://github.com/taask/runner-k8s): Runs tasks as Kubernetes Jobs using container images
+	- [runner-golang](https://github.com/taask/runner-golang): Go library for developing custom runners
 
 ### Child Runners
 Runners such as runner-k8s can delegate tasks to _child runners_, which are short-lived, ephemeral runners meant to execute one task in their lifetime.
@@ -71,25 +83,26 @@ Runners such as runner-k8s can delegate tasks to _child runners_, which are shor
 ### Clients
 Clients generate tasks, which are arbitrary JSON, and send them to taask-server to be executed.
 Clients can stream task status updates from taask-server.
-Clients encrypt task data by default, ensuring tasks are never transmitted or stored in a decrypted state.
+Clients encrypt task data before submitting them, ensuring tasks are never transmitted or stored in a decrypted state.
 
-  - [client-golang](https://github.com/taask/client-golang): Go library for producing tasks and communicating with taask-server
+	- [client-golang](https://github.com/taask/client-golang): Go library for producing tasks and communicating with taask-server
 
 ### Tasks
 Tasks are arbitrary JSON. Clients produce tasks, runners use the task JSON as input for their `Run` function, and return arbitrary result JSON.
 
 ### Security
-Task data is opaque and encrypted by default.
-- Client libraries generate a _task keypair_, used to authenticate with taask-server and decrypt task results. The _task public key_ is included in the task metadata.
-- Clients encrypt task data with a symmetric _task key_, and then encrypt the _task key_ with the _runner master public key_.
+Task data is opaque and encrypted in transit and at rest. Security is the top priority of Taask Core.
+- Client libraries generate a _client keypair_, used to authenticate with taask-server.
+- Clients encrypt task data with a symmetric _task key_, and then encrypt the _task key_ with a _task keypair_.
+	- The _task key_ and _task keypair_ are cached in the memory of the client who created the task. Eventually, the _task keypair_ will be optionally stored in a shared location, accessible to any clients with access to the storage. This will allow clients to become more ephemeral.
+- The _task key_ is also encrypted with the _master runner public key_. Both encrypted versions of the _task key_ are sent with the task.
 - Task data remains encrypted until it is recieved by the runner, at which point it is decrypted and provided to the `Run` function of the runner. 
   - If the assigned runner delegates the task, the task JSON is not decrypted until it reaches its child runner.
-- Tasks are never stored or transmitted in a decrypted state.  
-- taask-server owns the _runner master private key_, and can decrypt the task key.
+- taask-server owns the _master runner private key_, and can decrypt the _task key_.
 - Every runner and child runner generates a _runner keypair_ upon startup, used to authenticate with taask-server and decrypt task data.
 - When a task is assigned to a runner, taask-server re-encrypts the _task key_ using the runner's _runner public key_
 - The runner decrypts the _task key_ and then uses it to decrypt the task data.
-- The task key is then used to encrypt the task result data, and the _task key_ is re-encrypted with the _task public key_.
+- The task key is then used to encrypt the task result data, and the result is returned to the client.
 
 ### Maintainers
 - Connor Hicks [@cohix](https://github.com/cohix)
