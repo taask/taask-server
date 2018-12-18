@@ -78,7 +78,7 @@ func (t *Task) ApplyUpdate(update TaskUpdate, logIt bool) error {
 
 	if update.RunnerEncTaskKey != nil && t.Meta.RunnerEncTaskKey != update.RunnerEncTaskKey {
 		if logIt {
-			log.LogInfo(fmt.Sprintf("task %s runner key updated (message encrypted with KID %s)", t.UUID, t.Meta.RunnerEncTaskKey.KID))
+			log.LogInfo(fmt.Sprintf("task %s runner key updated (message encrypted with KID %s)", t.UUID, update.RunnerEncTaskKey.KID))
 		}
 
 		t.Meta.RunnerEncTaskKey = update.RunnerEncTaskKey

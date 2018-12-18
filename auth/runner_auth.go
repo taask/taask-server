@@ -57,6 +57,7 @@ func NewRunnerAuthManager(joinCode string) (*RunnerAuthManager, error) {
 		JoinCode:            joinCode,
 		usedSignatures:      []*simplcrypto.Signature{},
 		authedRunners:       make(map[string]*runnerAuth),
+		activeRunnerKeys:    make(map[string]*simplcrypto.KeyPair),
 		runnerMasterKeyPair: masterPair,
 	}
 
