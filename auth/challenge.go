@@ -2,6 +2,7 @@ package auth
 
 import (
 	"crypto/rand"
+	"time"
 
 	"github.com/cohix/simplcrypto"
 )
@@ -19,6 +20,17 @@ func GenerateJoinCode() string {
 	}
 
 	return simplcrypto.Base64URLEncode(codeBytes)
+}
+
+func timestampIsValid(timestamp int64) bool {
+	realTime := time.Unix(timestamp, 0)
+	now := time.Now()
+
+	if now.Sub(realTime).Seconds() > 5 || now.Sub(realTime).Seconds() < 0 {
+		return false
+	}
+
+	return true
 }
 
 func newChallengeBytes() []byte {
