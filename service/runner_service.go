@@ -77,7 +77,7 @@ func (rs *RunnerService) RegisterRunner(req *RegisterRunnerRequest, stream Runne
 	tasksChan := make(chan *model.Task, 128)
 
 	runner := &model.Runner{
-		UUID:        model.NewRunnerUUID(),
+		UUID:        req.UUID,
 		Kind:        req.Kind,
 		Tags:        req.Tags,
 		TaskChannel: tasksChan,
