@@ -13,7 +13,11 @@ import (
 func main() {
 	errChan := make(chan error)
 
-	brain := Bootstrap()
+	brain, err := Bootstrap()
+	if err != nil {
+		log.LogError(err)
+		os.Exit(1)
+	}
 
 	go service.StartRunnerService(brain, errChan)
 	go service.StartTaskService(brain, errChan)

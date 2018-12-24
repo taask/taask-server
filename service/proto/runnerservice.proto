@@ -16,13 +16,13 @@ service RunnerService {
 }
 
 message AuthRunnerRequest {
-	simpl.crypto.SerializablePubKey PubKey = 1;
-	simpl.crypto.Signature JoinCodeSignature = 2;
+	string UUID = 1;
+	simpl.crypto.SerializablePubKey PubKey = 2;
+	simpl.crypto.Signature AuthHashSignature = 3;
 }
 
 message AuthRunnerResponse {
 	simpl.crypto.Message EncChallenge = 1;
-	simpl.crypto.Message EncChallengeKey = 2;
 }
 
 message RegisterRunnerRequest {

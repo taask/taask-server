@@ -5,8 +5,11 @@ import (
 	"net"
 	"time"
 
+	"github.com/cohix/simplcrypto"
+
 	log "github.com/cohix/simplog"
 	"github.com/pkg/errors"
+	"github.com/taask/taask-server/auth"
 	"github.com/taask/taask-server/brain"
 	"github.com/taask/taask-server/model"
 	context "golang.org/x/net/context"
@@ -42,14 +45,25 @@ type RunnerService struct {
 func (rs *RunnerService) AuthRunner(ctx context.Context, req *AuthRunnerRequest) (*AuthRunnerResponse, error) {
 	defer log.LogTrace("AuthRunner")()
 
-	encRunnerChallenge, err := rs.Manager.AuthRunner(req.PubKey, req.JoinCodeSignature)
+	keypair, err := simplcrypto.KeyPairFromSerializedPubKey(req.PubKey)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to KeyPairFromSerializedPubKey")
+	}
+
+	attempt := &auth.Attempt{
+		MemberUUID:  req.UUID,
+		GroupUUID:   auth.DefaultGroupUUID,
+		PubKey:      keypair,
+		AuthHashSig: req.AuthHashSignature,
+	}
+
+	encRunnerChallenge, err := rs.Manager.AttemptRunnerAuth(attempt)
 	if err != nil {
 		return nil, err
 	}
 
 	resp := &AuthRunnerResponse{
-		EncChallenge:    encRunnerChallenge.EncChallenge,
-		EncChallengeKey: encRunnerChallenge.EncChallengeKey,
+		EncChallenge: encRunnerChallenge.EncSessionChallenge,
 	}
 
 	return resp, nil
