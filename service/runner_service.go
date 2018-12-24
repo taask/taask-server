@@ -55,6 +55,7 @@ func (rs *RunnerService) AuthRunner(ctx context.Context, req *AuthRunnerRequest)
 		GroupUUID:   auth.DefaultGroupUUID,
 		PubKey:      keypair,
 		AuthHashSig: req.AuthHashSignature,
+		Timestamp:   req.Timestamp,
 	}
 
 	encRunnerChallenge, err := rs.Manager.AttemptRunnerAuth(attempt)

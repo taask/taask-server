@@ -19,6 +19,7 @@ message AuthRunnerRequest {
 	string UUID = 1;
 	simpl.crypto.SerializablePubKey PubKey = 2;
 	simpl.crypto.Signature AuthHashSignature = 3;
+	int64 Timestamp = 4;
 }
 
 message AuthRunnerResponse {

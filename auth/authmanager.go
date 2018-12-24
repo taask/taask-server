@@ -8,7 +8,7 @@ const (
 	AdminGroupUUID   = "admingroupuuid"
 )
 
-// Manager describes the interface for things that are able to auth
+// Manager describes the interface for things that are able to manage auth
 type Manager interface {
 	AttemptAuth(attempt *Attempt) (*EncMemberSession, error)
 	CheckAuth(session *Session) error
