@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+import "github.com/cohix/simplcrypto/proto/message.proto";
+import "github.com/cohix/simplcrypto/proto/keypair.proto";
+
+package taask.server.auth;
+option go_package = "github.com/taask/taask-server/auth";
+
+message Attempt {
+	string MemberUUID = 1;
+	string GroupUUID = 2;
+	simpl.crypto.SerializablePubKey PubKey = 3;
+	simpl.crypto.Signature AuthHashSig = 4;
+	int64 Timestamp = 5;
+}
+
+message Session {
+	string MemberUUID = 1;
+	string GroupUUID = 2;
+	simpl.crypto.Signature SessionChallengeSig = 3;
+}
+
+message MemberGroup {
+	string UUID = 1;
+	string Name = 2;
+	string JoinCode = 3;
+	bytes AuthHash = 4;
+}
