@@ -21,7 +21,7 @@ type InternalAuthManager struct {
 }
 
 // NewInternalAuthManager returns a new InternalAuthManager
-func NewInternalAuthManager(joinCode string) (*InternalAuthManager, error) {
+func NewInternalAuthManager() (*InternalAuthManager, error) {
 	masterPair, err := simplcrypto.GenerateMasterKeyPair()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to GenerateMasterKeyPair")
@@ -37,6 +37,7 @@ func NewInternalAuthManager(joinCode string) (*InternalAuthManager, error) {
 }
 
 // AttemptAuth checks the auth request for a member
+// TODO: consider including the group UUID in the crypto meat grinder?
 func (am *InternalAuthManager) AttemptAuth(attempt *Attempt) (*EncMemberSession, error) {
 	group, ok := am.memberGroups[attempt.GroupUUID]
 	if !ok {
@@ -51,7 +52,12 @@ func (am *InternalAuthManager) AttemptAuth(attempt *Attempt) (*EncMemberSession,
 	binary.LittleEndian.PutUint64(nonce, uint64(attempt.Timestamp))
 	hashWithNonce := append(group.AuthHash, nonce...)
 
-	if err := attempt.PubKey.Verify(hashWithNonce, attempt.AuthHashSig); err != nil {
+	pubkey, err := simplcrypto.KeyPairFromSerializedPubKey(attempt.PubKey)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to KeyPairFromSerializedPubKey")
+	}
+
+	if err := pubkey.Verify(hashWithNonce, attempt.AuthHashSig); err != nil {
 		return nil, errors.Wrap(err, "failed to Verify")
 	}
 
@@ -60,7 +66,7 @@ func (am *InternalAuthManager) AttemptAuth(attempt *Attempt) (*EncMemberSession,
 		return nil, errors.New("failed to newChallengeBytes")
 	}
 
-	encChallenge, err := attempt.PubKey.Encrypt(challenge)
+	encChallenge, err := pubkey.Encrypt(challenge)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to Encrypt challenge")
 	}
@@ -69,7 +75,7 @@ func (am *InternalAuthManager) AttemptAuth(attempt *Attempt) (*EncMemberSession,
 		UUID:             attempt.MemberUUID,
 		GroupUUID:        attempt.GroupUUID,
 		SessionChallenge: challenge,
-		PubKey:           attempt.PubKey,
+		PubKey:           pubkey,
 	}
 
 	am.authedMembers[attempt.MemberUUID] = memberAuth

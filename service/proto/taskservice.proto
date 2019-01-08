@@ -1,25 +1,22 @@
 syntax = "proto3";
 
+import "common.proto";
+import "auth/proto/auth.proto";
 import "model/proto/task.proto";
 import "github.com/cohix/simplcrypto/proto/message.proto";
-import "github.com/cohix/simplcrypto/proto/keypair.proto";
 
 package taask.server.service;
 option go_package = "github.com/taask/taask-server/service";
 
 service TaskService {
-	rpc AuthClient(AuthClientRequest) returns (AuthClientResponse);
-	rpc Queue (taask.server.model.Task) returns (QueueTaskResponse);
+	rpc AuthClient(AuthMemberRequest) returns (AuthMemberResponse);
+	rpc Queue (QueueTaskRequest) returns (QueueTaskResponse);
 	rpc CheckTask(CheckTaskRequest) returns (stream CheckTaskResponse);
 }
 
-message AuthClientRequest {
-	simpl.crypto.Signature JoinCodeSignature = 1;
-	simpl.crypto.SerializablePubKey PubKey = 2;
-}
-
-message AuthClientResponse {
-	simpl.crypto.SerializablePubKey MasterRunnerPubKey = 1;
+message QueueTaskRequest {
+	taask.server.model.Task Task = 1;
+	taask.server.auth.Session Session = 2;
 }
 
 message QueueTaskResponse {
@@ -28,6 +25,7 @@ message QueueTaskResponse {
 
 message CheckTaskRequest {
 	string UUID = 1;
+	taask.server.auth.Session Session = 2;
 }
 
 message CheckTaskResponse {

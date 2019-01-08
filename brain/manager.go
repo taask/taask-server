@@ -17,19 +17,26 @@ import (
 
 // Manager is the facade for the subsystem managers (schedule, storage, update, auth)
 type Manager struct {
+	// Updater manages updates to tasks and coordinates listeners, storage, and metrics
 	Updater *update.Manager
 
+	// Scheduler consumes tasks and schedules them onto the compute plane
 	scheduler *schedule.Manager
 	storage   storage.Manager
 
+	// runnerAuth manages the authentication of runners
 	runnerAuth     auth.Manager
 	RunnerJoinCode string
 
+	// clientAuth manages the authentication of clients
+	clientAuth auth.Manager
+
+	// metrics manages observability
 	metrics *metrics.Manager
 }
 
 // NewManager creates a new manager
-func NewManager(joinCode string, storage storage.Manager, runnerAuth auth.Manager) *Manager {
+func NewManager(joinCode string, storage storage.Manager, runnerAuth, clientAuth auth.Manager) *Manager {
 	metrics, err := metrics.NewManager()
 	if err != nil {
 		log.LogError(errors.Wrap(err, "failed to metrics.NewManager"))
@@ -57,6 +64,21 @@ func NewManager(joinCode string, storage storage.Manager, runnerAuth auth.Manage
 // AttemptRunnerAuth allows a runner to auth
 func (m *Manager) AttemptRunnerAuth(attempt *auth.Attempt) (*auth.EncMemberSession, error) {
 	return m.runnerAuth.AttemptAuth(attempt)
+}
+
+// AttemptClientAuth allows a runner to auth
+func (m *Manager) AttemptClientAuth(attempt *auth.Attempt) (*auth.EncMemberSession, error) {
+	return m.clientAuth.AttemptAuth(attempt)
+}
+
+// CheckClientAuth checks client auth
+func (m *Manager) CheckClientAuth(session *auth.Session) error {
+	return m.clientAuth.CheckAuth(session)
+}
+
+// CheckClientAdminAuth checks client auth
+func (m *Manager) CheckClientAdminAuth(session *auth.Session) error {
+	return m.clientAuth.CheckAuthEnsureAdmin(session)
 }
 
 // RegisterRunner registers a runner with the manager's scheduler
