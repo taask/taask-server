@@ -5,8 +5,6 @@ import (
 	"net"
 	"time"
 
-	"github.com/cohix/simplcrypto"
-
 	log "github.com/cohix/simplog"
 	"github.com/pkg/errors"
 	"github.com/taask/taask-server/auth"
@@ -42,18 +40,13 @@ type RunnerService struct {
 }
 
 // AuthRunner allows a runner to advertise itself and perform auth with the server
-func (rs *RunnerService) AuthRunner(ctx context.Context, req *AuthRunnerRequest) (*AuthRunnerResponse, error) {
+func (rs *RunnerService) AuthRunner(ctx context.Context, req *AuthMemberRequest) (*AuthMemberResponse, error) {
 	defer log.LogTrace("AuthRunner")()
-
-	keypair, err := simplcrypto.KeyPairFromSerializedPubKey(req.PubKey)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to KeyPairFromSerializedPubKey")
-	}
 
 	attempt := &auth.Attempt{
 		MemberUUID:  req.UUID,
 		GroupUUID:   auth.DefaultGroupUUID,
-		PubKey:      keypair,
+		PubKey:      req.PubKey,
 		AuthHashSig: req.AuthHashSignature,
 		Timestamp:   req.Timestamp,
 	}
@@ -63,7 +56,7 @@ func (rs *RunnerService) AuthRunner(ctx context.Context, req *AuthRunnerRequest)
 		return nil, err
 	}
 
-	resp := &AuthRunnerResponse{
+	resp := &AuthMemberResponse{
 		EncChallenge: encRunnerChallenge.EncSessionChallenge,
 	}
 

@@ -26,7 +26,7 @@ spec:
         - containerPort: 3689
         - containerPort: 6060
         volumeMounts:
-        - mountPath: /taask/config
+        - mountPath: $HOME/.taask/server/config
           name: taask-config
       volumes:
       - name: taask-config

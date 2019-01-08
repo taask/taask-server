@@ -24,6 +24,7 @@ message TaskMeta {
 	int32 RetrySeconds = 7;
 	int32 TimeoutSeconds = 8;
 	int32 Version = 9;
+	string GroupUUID = 10;
 }
 
 message TaskUpdate {

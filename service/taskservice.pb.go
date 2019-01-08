@@ -7,6 +7,7 @@ import (
 	fmt "fmt"
 	simplcrypto "github.com/cohix/simplcrypto"
 	proto "github.com/golang/protobuf/proto"
+	auth "github.com/taask/taask-server/auth"
 	model "github.com/taask/taask-server/model"
 	context "golang.org/x/net/context"
 	grpc "google.golang.org/grpc"
@@ -24,88 +25,49 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
-type AuthClientRequest struct {
-	JoinCodeSignature    *simplcrypto.Signature          `protobuf:"bytes,1,opt,name=JoinCodeSignature,proto3" json:"JoinCodeSignature,omitempty"`
-	PubKey               *simplcrypto.SerializablePubKey `protobuf:"bytes,2,opt,name=PubKey,proto3" json:"PubKey,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}                        `json:"-"`
-	XXX_unrecognized     []byte                          `json:"-"`
-	XXX_sizecache        int32                           `json:"-"`
+type QueueTaskRequest struct {
+	Task                 *model.Task   `protobuf:"bytes,1,opt,name=Task,proto3" json:"Task,omitempty"`
+	Session              *auth.Session `protobuf:"bytes,2,opt,name=Session,proto3" json:"Session,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}      `json:"-"`
+	XXX_unrecognized     []byte        `json:"-"`
+	XXX_sizecache        int32         `json:"-"`
 }
 
-func (m *AuthClientRequest) Reset()         { *m = AuthClientRequest{} }
-func (m *AuthClientRequest) String() string { return proto.CompactTextString(m) }
-func (*AuthClientRequest) ProtoMessage()    {}
-func (*AuthClientRequest) Descriptor() ([]byte, []int) {
+func (m *QueueTaskRequest) Reset()         { *m = QueueTaskRequest{} }
+func (m *QueueTaskRequest) String() string { return proto.CompactTextString(m) }
+func (*QueueTaskRequest) ProtoMessage()    {}
+func (*QueueTaskRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_2f9f4b593773f8c1, []int{0}
 }
 
-func (m *AuthClientRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_AuthClientRequest.Unmarshal(m, b)
+func (m *QueueTaskRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_QueueTaskRequest.Unmarshal(m, b)
 }
-func (m *AuthClientRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_AuthClientRequest.Marshal(b, m, deterministic)
+func (m *QueueTaskRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_QueueTaskRequest.Marshal(b, m, deterministic)
 }
-func (m *AuthClientRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_AuthClientRequest.Merge(m, src)
+func (m *QueueTaskRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_QueueTaskRequest.Merge(m, src)
 }
-func (m *AuthClientRequest) XXX_Size() int {
-	return xxx_messageInfo_AuthClientRequest.Size(m)
+func (m *QueueTaskRequest) XXX_Size() int {
+	return xxx_messageInfo_QueueTaskRequest.Size(m)
 }
-func (m *AuthClientRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_AuthClientRequest.DiscardUnknown(m)
+func (m *QueueTaskRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_QueueTaskRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_AuthClientRequest proto.InternalMessageInfo
+var xxx_messageInfo_QueueTaskRequest proto.InternalMessageInfo
 
-func (m *AuthClientRequest) GetJoinCodeSignature() *simplcrypto.Signature {
+func (m *QueueTaskRequest) GetTask() *model.Task {
 	if m != nil {
-		return m.JoinCodeSignature
+		return m.Task
 	}
 	return nil
 }
 
-func (m *AuthClientRequest) GetPubKey() *simplcrypto.SerializablePubKey {
+func (m *QueueTaskRequest) GetSession() *auth.Session {
 	if m != nil {
-		return m.PubKey
-	}
-	return nil
-}
-
-type AuthClientResponse struct {
-	MasterRunnerPubKey   *simplcrypto.SerializablePubKey `protobuf:"bytes,1,opt,name=MasterRunnerPubKey,proto3" json:"MasterRunnerPubKey,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}                        `json:"-"`
-	XXX_unrecognized     []byte                          `json:"-"`
-	XXX_sizecache        int32                           `json:"-"`
-}
-
-func (m *AuthClientResponse) Reset()         { *m = AuthClientResponse{} }
-func (m *AuthClientResponse) String() string { return proto.CompactTextString(m) }
-func (*AuthClientResponse) ProtoMessage()    {}
-func (*AuthClientResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_2f9f4b593773f8c1, []int{1}
-}
-
-func (m *AuthClientResponse) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_AuthClientResponse.Unmarshal(m, b)
-}
-func (m *AuthClientResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_AuthClientResponse.Marshal(b, m, deterministic)
-}
-func (m *AuthClientResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_AuthClientResponse.Merge(m, src)
-}
-func (m *AuthClientResponse) XXX_Size() int {
-	return xxx_messageInfo_AuthClientResponse.Size(m)
-}
-func (m *AuthClientResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_AuthClientResponse.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_AuthClientResponse proto.InternalMessageInfo
-
-func (m *AuthClientResponse) GetMasterRunnerPubKey() *simplcrypto.SerializablePubKey {
-	if m != nil {
-		return m.MasterRunnerPubKey
+		return m.Session
 	}
 	return nil
 }
@@ -121,7 +83,7 @@ func (m *QueueTaskResponse) Reset()         { *m = QueueTaskResponse{} }
 func (m *QueueTaskResponse) String() string { return proto.CompactTextString(m) }
 func (*QueueTaskResponse) ProtoMessage()    {}
 func (*QueueTaskResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_2f9f4b593773f8c1, []int{2}
+	return fileDescriptor_2f9f4b593773f8c1, []int{1}
 }
 
 func (m *QueueTaskResponse) XXX_Unmarshal(b []byte) error {
@@ -150,17 +112,18 @@ func (m *QueueTaskResponse) GetUUID() string {
 }
 
 type CheckTaskRequest struct {
-	UUID                 string   `protobuf:"bytes,1,opt,name=UUID,proto3" json:"UUID,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
+	UUID                 string        `protobuf:"bytes,1,opt,name=UUID,proto3" json:"UUID,omitempty"`
+	Session              *auth.Session `protobuf:"bytes,2,opt,name=Session,proto3" json:"Session,omitempty"`
+	XXX_NoUnkeyedLiteral struct{}      `json:"-"`
+	XXX_unrecognized     []byte        `json:"-"`
+	XXX_sizecache        int32         `json:"-"`
 }
 
 func (m *CheckTaskRequest) Reset()         { *m = CheckTaskRequest{} }
 func (m *CheckTaskRequest) String() string { return proto.CompactTextString(m) }
 func (*CheckTaskRequest) ProtoMessage()    {}
 func (*CheckTaskRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_2f9f4b593773f8c1, []int{3}
+	return fileDescriptor_2f9f4b593773f8c1, []int{2}
 }
 
 func (m *CheckTaskRequest) XXX_Unmarshal(b []byte) error {
@@ -188,6 +151,13 @@ func (m *CheckTaskRequest) GetUUID() string {
 	return ""
 }
 
+func (m *CheckTaskRequest) GetSession() *auth.Session {
+	if m != nil {
+		return m.Session
+	}
+	return nil
+}
+
 type CheckTaskResponse struct {
 	Status               string               `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
 	Progress             int32                `protobuf:"varint,2,opt,name=progress,proto3" json:"progress,omitempty"`
@@ -202,7 +172,7 @@ func (m *CheckTaskResponse) Reset()         { *m = CheckTaskResponse{} }
 func (m *CheckTaskResponse) String() string { return proto.CompactTextString(m) }
 func (*CheckTaskResponse) ProtoMessage()    {}
 func (*CheckTaskResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_2f9f4b593773f8c1, []int{4}
+	return fileDescriptor_2f9f4b593773f8c1, []int{3}
 }
 
 func (m *CheckTaskResponse) XXX_Unmarshal(b []byte) error {
@@ -252,8 +222,7 @@ func (m *CheckTaskResponse) GetResult() *model.TaskUpdate {
 }
 
 func init() {
-	proto.RegisterType((*AuthClientRequest)(nil), "taask.server.service.AuthClientRequest")
-	proto.RegisterType((*AuthClientResponse)(nil), "taask.server.service.AuthClientResponse")
+	proto.RegisterType((*QueueTaskRequest)(nil), "taask.server.service.QueueTaskRequest")
 	proto.RegisterType((*QueueTaskResponse)(nil), "taask.server.service.QueueTaskResponse")
 	proto.RegisterType((*CheckTaskRequest)(nil), "taask.server.service.CheckTaskRequest")
 	proto.RegisterType((*CheckTaskResponse)(nil), "taask.server.service.CheckTaskResponse")
@@ -262,36 +231,34 @@ func init() {
 func init() { proto.RegisterFile("taskservice.proto", fileDescriptor_2f9f4b593773f8c1) }
 
 var fileDescriptor_2f9f4b593773f8c1 = []byte{
-	// 452 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x93, 0x41, 0x6f, 0xd3, 0x30,
-	0x14, 0xc7, 0x95, 0xb1, 0x55, 0xec, 0xed, 0x42, 0x2c, 0x18, 0x55, 0x0e, 0x68, 0xaa, 0xc4, 0xba,
-	0x0b, 0xce, 0x34, 0x04, 0xe2, 0x0a, 0x65, 0x07, 0x86, 0x26, 0x0d, 0x8f, 0x5e, 0x38, 0x80, 0xdc,
-	0xf4, 0xd1, 0x5a, 0x49, 0xe3, 0xe0, 0x67, 0x23, 0xca, 0xe7, 0xe0, 0xc4, 0x07, 0xe1, 0xf3, 0xa1,
-	0xd8, 0x56, 0xe9, 0xd6, 0x54, 0xc0, 0x25, 0x8a, 0xed, 0xdf, 0xff, 0x6f, 0xfb, 0xbd, 0xbf, 0x21,
-	0xb5, 0x92, 0x4a, 0x42, 0xf3, 0x55, 0x15, 0xc8, 0x1b, 0xa3, 0xad, 0x66, 0xf7, 0xad, 0x94, 0x54,
-	0xf2, 0x76, 0x12, 0x0d, 0x8f, 0x6b, 0xd9, 0xe1, 0x42, 0x4f, 0xb1, 0xca, 0x3d, 0x92, 0xb7, 0xa2,
-	0x40, 0x67, 0xa7, 0x33, 0x65, 0xe7, 0x6e, 0xc2, 0x0b, 0xbd, 0xc8, 0x0b, 0x3d, 0x57, 0xdf, 0x72,
-	0x52, 0x8b, 0xa6, 0x2a, 0xcc, 0xb2, 0xb1, 0x3a, 0xe2, 0x0b, 0x24, 0x92, 0x33, 0xfc, 0x0f, 0x45,
-	0x89, 0xcb, 0x46, 0x2a, 0x13, 0x14, 0x83, 0x1f, 0x09, 0xa4, 0x2f, 0x9d, 0x9d, 0x8f, 0x2a, 0x85,
-	0xb5, 0x15, 0xf8, 0xc5, 0x21, 0x59, 0x76, 0x0e, 0xe9, 0x85, 0x56, 0xf5, 0x48, 0x4f, 0xf1, 0x5a,
-	0xcd, 0x6a, 0x69, 0x9d, 0xc1, 0x7e, 0x72, 0x94, 0x9c, 0x1c, 0x9c, 0x3d, 0xe4, 0xde, 0x92, 0x07,
-	0x4f, 0xbe, 0x5a, 0x16, 0x9b, 0x0a, 0xf6, 0x02, 0x7a, 0x57, 0x6e, 0xf2, 0x16, 0x97, 0xfd, 0x1d,
-	0xaf, 0x3d, 0xba, 0xa5, 0x45, 0xa3, 0x64, 0xa5, 0xbe, 0xcb, 0x49, 0x85, 0x81, 0x13, 0x91, 0x1f,
-	0x7c, 0x06, 0xb6, 0x7e, 0x2a, 0x6a, 0x74, 0x4d, 0xc8, 0xae, 0x80, 0x5d, 0x4a, 0xb2, 0x68, 0x84,
-	0xab, 0x6b, 0x34, 0xd1, 0x3b, 0xf9, 0x47, 0xef, 0x0e, 0xed, 0x60, 0x08, 0xe9, 0x3b, 0x87, 0x0e,
-	0xdf, 0x4b, 0x2a, 0x57, 0xdb, 0x30, 0xd8, 0x1d, 0x8f, 0xdf, 0xbc, 0xf6, 0xc6, 0xfb, 0xc2, 0xff,
-	0x0f, 0x8e, 0xe1, 0xde, 0x68, 0x8e, 0x45, 0x19, 0xc0, 0x50, 0xa5, 0x2e, 0xee, 0x57, 0x02, 0xe9,
-	0x1a, 0x18, 0x1d, 0x0f, 0xa1, 0x47, 0x56, 0x5a, 0x47, 0x91, 0x8d, 0x23, 0x96, 0xc1, 0xdd, 0xc6,
-	0xe8, 0x99, 0x41, 0x22, 0x5f, 0xa2, 0x3d, 0xb1, 0x1a, 0xb3, 0x67, 0x00, 0xe7, 0x75, 0xd1, 0xda,
-	0xb4, 0x97, 0xbc, 0xe3, 0x2f, 0xf9, 0xe0, 0xe6, 0x25, 0x2f, 0x43, 0xf3, 0xc5, 0x1a, 0xc8, 0x9e,
-	0x43, 0xcf, 0x20, 0xb9, 0xca, 0xf6, 0x77, 0xbd, 0xe4, 0x11, 0xbf, 0x91, 0x39, 0x1f, 0x35, 0xde,
-	0xc2, 0xe3, 0x66, 0x2a, 0x2d, 0x8a, 0x48, 0x9f, 0xfd, 0xdc, 0x81, 0x83, 0x76, 0xfa, 0x3a, 0x84,
-	0x92, 0x7d, 0x02, 0xf8, 0xd3, 0x01, 0x36, 0xe4, 0x5d, 0xc9, 0xe5, 0x1b, 0xc9, 0xc9, 0x4e, 0xfe,
-	0x0e, 0xc6, 0x9a, 0x5c, 0xc0, 0x9e, 0x2f, 0x3d, 0xeb, 0x6f, 0x3b, 0x61, 0xb6, 0x65, 0xd7, 0xcd,
-	0x8e, 0x7d, 0x84, 0xfd, 0x55, 0xd1, 0xd9, 0x71, 0xb7, 0xea, 0x76, 0xfb, 0xb6, 0xb9, 0x6f, 0x74,
-	0xef, 0x34, 0x79, 0x35, 0xfc, 0xf0, 0x78, 0xed, 0x65, 0x79, 0x59, 0xf8, 0x3e, 0x09, 0xe2, 0x3c,
-	0x8a, 0x27, 0x3d, 0xff, 0xaa, 0x9e, 0xfe, 0x0e, 0x00, 0x00, 0xff, 0xff, 0xe5, 0x2f, 0x23, 0xcd,
-	0xfc, 0x03, 0x00, 0x00,
+	// 423 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x9c, 0x93, 0xdf, 0x8b, 0xd3, 0x40,
+	0x10, 0xc7, 0xc9, 0xd9, 0xab, 0xde, 0x9c, 0x0f, 0xd7, 0xc5, 0x3b, 0x42, 0x1e, 0x44, 0x0a, 0x9a,
+	0x7b, 0xd0, 0x4d, 0xa9, 0x3f, 0xde, 0xb5, 0xfa, 0x20, 0xd2, 0x07, 0x53, 0x0b, 0x22, 0xa2, 0x6c,
+	0xd3, 0xa1, 0x09, 0xf9, 0xb1, 0x71, 0x67, 0xb7, 0xd8, 0xff, 0xc8, 0xbf, 0xc0, 0xbf, 0x4f, 0xb2,
+	0x59, 0x4b, 0x5a, 0x5b, 0x0a, 0xbe, 0x84, 0xdd, 0xc9, 0xe7, 0x3b, 0xf3, 0x65, 0x66, 0x16, 0x06,
+	0x5a, 0x50, 0x4e, 0xa8, 0xd6, 0x59, 0x82, 0xbc, 0x56, 0x52, 0x4b, 0xf6, 0x40, 0x0b, 0x41, 0x39,
+	0x6f, 0x82, 0xa8, 0xb8, 0xfb, 0x17, 0xdc, 0x4f, 0x64, 0x59, 0xca, 0xaa, 0x65, 0x82, 0x6b, 0x61,
+	0x74, 0x1a, 0xd9, 0x73, 0xd4, 0x1c, 0x5d, 0xf8, 0xa6, 0x94, 0x4b, 0x2c, 0x5c, 0xbc, 0xc9, 0xec,
+	0xe2, 0xa3, 0x55, 0xa6, 0x53, 0xb3, 0xe0, 0x89, 0x2c, 0xa3, 0x44, 0xa6, 0xd9, 0xcf, 0x88, 0xb2,
+	0xb2, 0x2e, 0x12, 0xb5, 0xa9, 0xb5, 0x74, 0x78, 0x89, 0x44, 0x62, 0xe5, 0x4c, 0x0c, 0xd7, 0x70,
+	0xf5, 0xd1, 0xa0, 0xc1, 0x4f, 0x82, 0xf2, 0x18, 0x7f, 0x18, 0x24, 0xcd, 0x9e, 0x42, 0xaf, 0xb9,
+	0xfa, 0xde, 0x23, 0xef, 0xf6, 0x72, 0xec, 0xf3, 0x1d, 0x9f, 0xb6, 0x32, 0xb7, 0xb8, 0xa5, 0xd8,
+	0x0b, 0xb8, 0x3b, 0x43, 0xa2, 0x4c, 0x56, 0xfe, 0x99, 0x15, 0x04, 0xbb, 0x02, 0x6b, 0xdb, 0x11,
+	0xf1, 0x5f, 0x74, 0x18, 0xc2, 0xa0, 0x53, 0x97, 0x6a, 0x59, 0x11, 0x32, 0x06, 0xbd, 0xf9, 0xfc,
+	0xfd, 0x5b, 0x5b, 0xf8, 0x22, 0xb6, 0xe7, 0xe1, 0x57, 0xb8, 0x9a, 0xa4, 0x98, 0xe4, 0x5d, 0x83,
+	0x07, 0xb8, 0xff, 0xb4, 0xf1, 0xdb, 0x83, 0x41, 0x27, 0xbd, 0xf3, 0x71, 0x03, 0x7d, 0xd2, 0x42,
+	0x1b, 0x72, 0x15, 0xdc, 0x8d, 0x05, 0x70, 0xaf, 0x56, 0x72, 0xa5, 0x90, 0xc8, 0x16, 0x39, 0x8f,
+	0xb7, 0x77, 0xf6, 0x12, 0xe0, 0x5d, 0x95, 0x34, 0x69, 0x3e, 0xe0, 0xc6, 0xbf, 0x63, 0x2d, 0x5c,
+	0x73, 0xdb, 0x7e, 0xde, 0xf6, 0x9f, 0x4f, 0xdb, 0xce, 0xc7, 0x1d, 0x90, 0xbd, 0x82, 0xbe, 0x42,
+	0x32, 0x85, 0xf6, 0x7b, 0x56, 0xf2, 0xf0, 0x58, 0xb7, 0xe7, 0xf5, 0x52, 0x68, 0x8c, 0x1d, 0x3d,
+	0xfe, 0x75, 0x06, 0x97, 0x4d, 0x78, 0xd6, 0xae, 0x0d, 0xfb, 0x0e, 0xf0, 0xda, 0xe8, 0x74, 0x52,
+	0x64, 0x58, 0x69, 0x16, 0xf2, 0x43, 0xbb, 0xc5, 0x1b, 0x62, 0x8a, 0xe5, 0x02, 0x95, 0xeb, 0x64,
+	0x70, 0x7b, 0x1a, 0x74, 0x3d, 0xf9, 0x0c, 0xe7, 0x76, 0x60, 0xec, 0xc9, 0x61, 0xc9, 0xfe, 0x16,
+	0x05, 0xe1, 0x49, 0xce, 0x65, 0xfe, 0x06, 0x17, 0xdb, 0x11, 0x1c, 0xcb, 0xbe, 0xbf, 0x02, 0xc7,
+	0xb2, 0xff, 0x33, 0xcb, 0x91, 0xf7, 0x26, 0xfc, 0xf2, 0xb8, 0xf3, 0x2c, 0xac, 0xac, 0xfd, 0x3e,
+	0x6b, 0xc5, 0x91, 0x13, 0x2f, 0xfa, 0xf6, 0x49, 0x3c, 0xff, 0x13, 0x00, 0x00, 0xff, 0xff, 0x34,
+	0x86, 0x64, 0x3f, 0xac, 0x03, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -306,8 +273,8 @@ const _ = grpc.SupportPackageIsVersion4
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type TaskServiceClient interface {
-	AuthClient(ctx context.Context, in *AuthClientRequest, opts ...grpc.CallOption) (*AuthClientResponse, error)
-	Queue(ctx context.Context, in *model.Task, opts ...grpc.CallOption) (*QueueTaskResponse, error)
+	AuthClient(ctx context.Context, in *AuthMemberRequest, opts ...grpc.CallOption) (*AuthMemberResponse, error)
+	Queue(ctx context.Context, in *QueueTaskRequest, opts ...grpc.CallOption) (*QueueTaskResponse, error)
 	CheckTask(ctx context.Context, in *CheckTaskRequest, opts ...grpc.CallOption) (TaskService_CheckTaskClient, error)
 }
 
@@ -319,8 +286,8 @@ func NewTaskServiceClient(cc *grpc.ClientConn) TaskServiceClient {
 	return &taskServiceClient{cc}
 }
 
-func (c *taskServiceClient) AuthClient(ctx context.Context, in *AuthClientRequest, opts ...grpc.CallOption) (*AuthClientResponse, error) {
-	out := new(AuthClientResponse)
+func (c *taskServiceClient) AuthClient(ctx context.Context, in *AuthMemberRequest, opts ...grpc.CallOption) (*AuthMemberResponse, error) {
+	out := new(AuthMemberResponse)
 	err := c.cc.Invoke(ctx, "/taask.server.service.TaskService/AuthClient", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -328,7 +295,7 @@ func (c *taskServiceClient) AuthClient(ctx context.Context, in *AuthClientReques
 	return out, nil
 }
 
-func (c *taskServiceClient) Queue(ctx context.Context, in *model.Task, opts ...grpc.CallOption) (*QueueTaskResponse, error) {
+func (c *taskServiceClient) Queue(ctx context.Context, in *QueueTaskRequest, opts ...grpc.CallOption) (*QueueTaskResponse, error) {
 	out := new(QueueTaskResponse)
 	err := c.cc.Invoke(ctx, "/taask.server.service.TaskService/Queue", in, out, opts...)
 	if err != nil {
@@ -371,8 +338,8 @@ func (x *taskServiceCheckTaskClient) Recv() (*CheckTaskResponse, error) {
 
 // TaskServiceServer is the server API for TaskService service.
 type TaskServiceServer interface {
-	AuthClient(context.Context, *AuthClientRequest) (*AuthClientResponse, error)
-	Queue(context.Context, *model.Task) (*QueueTaskResponse, error)
+	AuthClient(context.Context, *AuthMemberRequest) (*AuthMemberResponse, error)
+	Queue(context.Context, *QueueTaskRequest) (*QueueTaskResponse, error)
 	CheckTask(*CheckTaskRequest, TaskService_CheckTaskServer) error
 }
 
@@ -381,7 +348,7 @@ func RegisterTaskServiceServer(s *grpc.Server, srv TaskServiceServer) {
 }
 
 func _TaskService_AuthClient_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AuthClientRequest)
+	in := new(AuthMemberRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -393,13 +360,13 @@ func _TaskService_AuthClient_Handler(srv interface{}, ctx context.Context, dec f
 		FullMethod: "/taask.server.service.TaskService/AuthClient",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TaskServiceServer).AuthClient(ctx, req.(*AuthClientRequest))
+		return srv.(TaskServiceServer).AuthClient(ctx, req.(*AuthMemberRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
 func _TaskService_Queue_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(model.Task)
+	in := new(QueueTaskRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -411,7 +378,7 @@ func _TaskService_Queue_Handler(srv interface{}, ctx context.Context, dec func(i
 		FullMethod: "/taask.server.service.TaskService/Queue",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(TaskServiceServer).Queue(ctx, req.(*model.Task))
+		return srv.(TaskServiceServer).Queue(ctx, req.(*QueueTaskRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io/ioutil"
 	"net/http"
 
@@ -8,15 +9,21 @@ import (
 	"github.com/pkg/errors"
 	"github.com/taask/taask-server/auth"
 	"github.com/taask/taask-server/brain"
+	"github.com/taask/taask-server/config"
 	"github.com/taask/taask-server/storage"
 )
 
 const (
-	joinCodeWritePath = "/taask/config/joincode"
+	joinCodeWritePath = "$HOME/.taask/server/config/joincode"
 )
 
 // Bootstrap bootstraps the service
 func Bootstrap() (*brain.Manager, error) {
+	serverConfig, err := config.ServerConfigFromDefaultDir()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to ServerConfigFromDefaultDir")
+	}
+
 	defer log.LogTrace("Bootstrap")()
 
 	joinCode := auth.GenerateJoinCode()
@@ -27,7 +34,12 @@ func Bootstrap() (*brain.Manager, error) {
 		return nil, errors.Wrap(err, "failed to newRunnerAuthManager")
 	}
 
-	brain := brain.NewManager(joinCode, storage.NewMemory(), runnerAuth)
+	clientAuth, err := configureClientAuthManager(&serverConfig.ClientAuth.AdminGroup)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to configureClientAuthManager")
+	}
+
+	brain := brain.NewManager(joinCode, storage.NewMemory(), runnerAuth, clientAuth)
 
 	go startMetricsServer(brain)
 
@@ -45,7 +57,7 @@ func startMetricsServer(brain *brain.Manager) {
 }
 
 func configureRunnerAuthManager(joinCode string) (*auth.InternalAuthManager, error) {
-	manager, err := auth.NewInternalAuthManager(joinCode)
+	manager, err := auth.NewInternalAuthManager()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to NewRunnerAuthManager")
 	}
@@ -67,6 +79,27 @@ func generateDefaultMemberGroup(joinCode string) *auth.MemberGroup {
 	}
 
 	return group
+}
+
+func configureClientAuthManager(adminGroup *auth.MemberGroup) (*auth.InternalAuthManager, error) {
+	manager, err := auth.NewInternalAuthManager()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to NewRunnerAuthManager")
+	}
+
+	if adminGroup.Name != "admin" {
+		return nil, fmt.Errorf("client auth config with group name %s not allowed", adminGroup.Name)
+	}
+
+	if adminGroup.UUID != auth.AdminGroupUUID {
+		return nil, fmt.Errorf("client auth config with group uuid %s not allowed", adminGroup.UUID)
+	}
+
+	if err := manager.AddGroup(adminGroup); err != nil {
+		return nil, errors.Wrap(err, "failed to AddGroup")
+	}
+
+	return manager, nil
 }
 
 func writeJoinCode(joinCode string) {

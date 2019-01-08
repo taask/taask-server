@@ -9,6 +9,7 @@ RUN go build
 
 FROM debian:stable-slim
 
-RUN mkdir -p /taask/config
+RUN mkdir /taask
+RUN mkdir -p $HOME/.taask/server/config
 
 COPY --from=builder /go/src/github.com/taask/taask-server/taask-server /taask/taask-server
