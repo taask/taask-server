@@ -89,6 +89,10 @@ func (am *InternalAuthManager) AttemptAuth(attempt *Attempt) (*EncMemberSession,
 
 // CheckAuth verifies a challenge signature is legit
 func (am *InternalAuthManager) CheckAuth(session *Session) error {
+	if session == nil {
+		return errors.New("missing session")
+	}
+
 	auth, ok := am.authedMembers[session.MemberUUID]
 	if !ok {
 		return errors.New(fmt.Sprintf("auth for member %s does not exist", session.MemberUUID))
@@ -106,7 +110,8 @@ func (am *InternalAuthManager) CheckAuth(session *Session) error {
 		return errors.Wrap(err, "failed to Verify")
 	}
 
-	auth.SessionChallenge = nil
+	// TODO: configurable session TTL
+	//auth.SessionChallenge = nil
 
 	return nil
 }

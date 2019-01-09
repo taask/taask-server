@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"path/filepath"
 
 	log "github.com/cohix/simplog"
 	"github.com/pkg/errors"
@@ -13,9 +14,7 @@ import (
 	"github.com/taask/taask-server/storage"
 )
 
-const (
-	joinCodeWritePath = "$HOME/.taask/server/config/joincode"
-)
+var joinCodeWritePath = filepath.Join(config.DefaultConfigDir(), "joincode")
 
 // Bootstrap bootstraps the service
 func Bootstrap() (*brain.Manager, error) {

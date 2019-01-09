@@ -57,6 +57,8 @@ func NewManager(joinCode string, storage storage.Manager, runnerAuth, clientAuth
 		runnerAuth:     runnerAuth,
 		RunnerJoinCode: joinCode,
 
+		clientAuth: clientAuth,
+
 		metrics: metrics,
 	}
 }
