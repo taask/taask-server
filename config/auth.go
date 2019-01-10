@@ -17,9 +17,9 @@ const (
 
 // ClientAuthConfig is the config for client auth
 type ClientAuthConfig struct {
-	Version    int
-	Type       string
-	AdminGroup auth.MemberGroup
+	Version     int
+	Type        string
+	MemberGroup auth.MemberGroup
 }
 
 func clientAuthConfigFromFile(filepath string) (*ClientAuthConfig, error) {

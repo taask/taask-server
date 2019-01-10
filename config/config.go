@@ -14,6 +14,8 @@ import (
 const (
 	ConfigServerBaseDir = ".taask/server/config/"
 
+	ClientAuthConfigFilename = "client-auth.yaml"
+
 	missingAdminGroupConfigWarning = `
 ########################################################
 	ADMIN GROUP NOT CONFIGURED.
@@ -32,7 +34,7 @@ type ServerConfig struct {
 
 // ServerConfigFromDefaultDir reads the server config from the default directory
 func ServerConfigFromDefaultDir() (*ServerConfig, error) {
-	clientAuthConfig, err := clientAuthConfigFromFile(path.Join(DefaultConfigDir(), "client-auth.yaml"))
+	clientAuthConfig, err := clientAuthConfigFromFile(path.Join(DefaultServerConfigDir(), ClientAuthConfigFilename))
 	if err != nil {
 		log.LogWarn(missingAdminGroupConfigWarning)
 
@@ -47,12 +49,12 @@ func ServerConfigFromDefaultDir() (*ServerConfig, error) {
 		}
 
 		clientAuthConfig = &ClientAuthConfig{
-			Version:    ClientAuthConfigVersion,
-			Type:       ClientAuthConfigType,
-			AdminGroup: group,
+			Version:     ClientAuthConfigVersion,
+			Type:        ClientAuthConfigType,
+			MemberGroup: group,
 		}
 
-		if err := clientAuthConfig.WriteYAML(path.Join(DefaultConfigDir(), "client-auth.yaml")); err != nil {
+		if err := clientAuthConfig.WriteYAML(path.Join(DefaultServerConfigDir(), ClientAuthConfigFilename)); err != nil {
 			log.LogWarn(errors.Wrap(err, "failed to WriteYaml for generated admin config ").Error())
 		}
 	}
@@ -64,8 +66,8 @@ func ServerConfigFromDefaultDir() (*ServerConfig, error) {
 	return config, nil
 }
 
-// DefaultConfigDir returns ~/.taask/server/config unless XDG_CONFIG_HOME is set
-func DefaultConfigDir() string {
+// DefaultServerConfigDir returns ~/.taask/server/config unless XDG_CONFIG_HOME is set
+func DefaultServerConfigDir() string {
 	u, err := user.Current()
 	if err != nil {
 		return ""
