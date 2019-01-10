@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	log "github.com/cohix/simplog"
@@ -44,7 +43,6 @@ func run() {
 	// }()
 
 	log.LogInfo("starting taask-server")
-	log.LogInfo(fmt.Sprintf("runner join code: %s", brain.JoinCode()))
 
 	for {
 		if err := <-errChan; err != nil {

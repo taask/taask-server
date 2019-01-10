@@ -67,16 +67,21 @@ func (rs *RunnerService) AuthRunner(ctx context.Context, req *AuthMemberRequest)
 func (rs *RunnerService) RegisterRunner(req *RegisterRunnerRequest, stream RunnerService_RegisterRunnerServer) error {
 	defer log.LogTrace(fmt.Sprintf("RegisterRunner kind %s", req.Kind))()
 
+	if err := rs.Manager.CheckRunnerAuth(req.Session); err != nil {
+		log.LogError(errors.Wrap(err, "failed to CheckRunnerAuth"))
+		return err
+	}
+
 	tasksChan := make(chan *model.Task, 128)
 
 	runner := &model.Runner{
-		UUID:        req.UUID,
+		UUID:        req.Session.MemberUUID,
 		Kind:        req.Kind,
 		Tags:        req.Tags,
 		TaskChannel: tasksChan,
 	}
 
-	if err := rs.Manager.RegisterRunner(runner, req.ChallengeSignature); err != nil {
+	if err := rs.Manager.RegisterRunner(runner); err != nil {
 		log.LogError(errors.Wrap(err, "failed to RegisterRunner"))
 		return err
 	}
@@ -137,15 +142,20 @@ func (rs *RunnerService) RegisterRunner(req *RegisterRunnerRequest, stream Runne
 }
 
 // UpdateTask handles update task calls
-func (rs *RunnerService) UpdateTask(ctx context.Context, req *model.TaskUpdate) (*Empty, error) {
-	defer log.LogTrace(fmt.Sprintf("UpdateTask task %s", req.UUID))()
+func (rs *RunnerService) UpdateTask(ctx context.Context, req *UpdateTaskRequest) (*Empty, error) {
+	defer log.LogTrace(fmt.Sprintf("UpdateTask task %s", req.Update.UUID))()
 
-	if err := rs.checkTaskVersion(req); err != nil {
+	if err := rs.Manager.CheckRunnerAuth(req.Session); err != nil {
+		log.LogError(errors.Wrap(err, "failed to CheckRunnerAuth"))
+		return nil, err
+	}
+
+	if err := rs.checkTaskVersion(req.Update); err != nil {
 		log.LogError(errors.Wrap(err, "failed to checkTaskVersion"))
 		return &Empty{}, nil
 	}
 
-	rs.Manager.Updater.UpdateTask(*req)
+	rs.Manager.Updater.UpdateTask(*req.Update)
 
 	return &Empty{}, nil
 }

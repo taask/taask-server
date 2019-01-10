@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"os/user"
 	"path"
@@ -15,52 +16,59 @@ const (
 	ConfigServerBaseDir = ".taask/server/config/"
 
 	ClientAuthConfigFilename = "client-auth.yaml"
+	RunnerAuthConfigFilename = "runner-auth.yaml"
 
 	missingAdminGroupConfigWarning = `
 ########################################################
 	ADMIN GROUP NOT CONFIGURED.
 	EMPTY PASSPHRASE WILL BE USED.
-	JOIN CODE WILL BE PRINTED.
-RUN 'taaskctl generate auth' TO GENERATE CREDENTIALS
+RUN 'taaskctl init server' TO GENERATE CREDENTIALS
 EMPTY PASSPHRASE IS INSECURE. DO NOT RUN IN PRODUCTION.
 ########################################################
 `
 )
 
+var clientConfigPath string = path.Join(DefaultServerConfigDir(), ClientAuthConfigFilename)
+var runnerConfigPath string = path.Join(DefaultServerConfigDir(), RunnerAuthConfigFilename)
+
 // ServerConfig is the config for the server
 type ServerConfig struct {
 	ClientAuth *ClientAuthConfig
+	RunnerAuth *ClientAuthConfig
 }
 
 // ServerConfigFromDefaultDir reads the server config from the default directory
 func ServerConfigFromDefaultDir() (*ServerConfig, error) {
-	clientAuthConfig, err := clientAuthConfigFromFile(path.Join(DefaultServerConfigDir(), ClientAuthConfigFilename))
+	clientAuthConfig, err := clientAuthConfigFromFile(clientConfigPath)
 	if err != nil {
 		log.LogWarn(missingAdminGroupConfigWarning)
+		log.LogInfo(fmt.Sprintf("writing insecure client config to: %s", runnerConfigPath))
 
-		joinCode := auth.GenerateJoinCode()
-		authHash := auth.GroupAuthHash(joinCode, "")
-
-		group := auth.MemberGroup{
-			UUID:     auth.AdminGroupUUID,
-			Name:     "admin",
-			JoinCode: joinCode,
-			AuthHash: authHash,
-		}
-
-		clientAuthConfig = &ClientAuthConfig{
-			Version:     ClientAuthConfigVersion,
-			Type:        ClientAuthConfigType,
-			MemberGroup: group,
-		}
+		clientAuthConfig = generateInsecureAdminGroup()
 
 		if err := clientAuthConfig.WriteYAML(path.Join(DefaultServerConfigDir(), ClientAuthConfigFilename)); err != nil {
 			log.LogWarn(errors.Wrap(err, "failed to WriteYaml for generated admin config ").Error())
 		}
+	} else {
+		log.LogInfo("loaded client auth from file")
+	}
+
+	runnerAuthConfig, err := clientAuthConfigFromFile(runnerConfigPath)
+	if err != nil {
+		runnerAuthConfig = generateDefaultRunnerGroup()
+
+		log.LogInfo(fmt.Sprintf("writing runner config to: %s", runnerConfigPath))
+
+		if err := runnerAuthConfig.WriteYAML(runnerConfigPath); err != nil {
+			log.LogWarn(errors.Wrap(err, "failed to WriteYaml for generated runner config ").Error())
+		}
+	} else {
+		log.LogInfo("loaded runner auth from file")
 	}
 
 	config := &ServerConfig{
 		ClientAuth: clientAuthConfig,
+		RunnerAuth: runnerAuthConfig,
 	}
 
 	return config, nil
@@ -80,4 +88,44 @@ func DefaultServerConfigDir() string {
 	}
 
 	return path.Join(root, ConfigServerBaseDir)
+}
+
+func generateInsecureAdminGroup() *ClientAuthConfig {
+	joinCode := auth.GenerateJoinCode()
+	authHash := auth.GroupAuthHash(joinCode, "")
+
+	group := auth.MemberGroup{
+		UUID:     auth.AdminGroupUUID,
+		Name:     "admin",
+		JoinCode: joinCode,
+		AuthHash: authHash,
+	}
+
+	clientAuthConfig := &ClientAuthConfig{
+		Version:     MemberAuthConfigVersion,
+		Type:        MemberAuthConfigType,
+		MemberGroup: group,
+	}
+
+	return clientAuthConfig
+}
+
+func generateDefaultRunnerGroup() *ClientAuthConfig {
+	joinCode := auth.GenerateJoinCode()
+	authHash := auth.GroupAuthHash(joinCode, "")
+
+	group := auth.MemberGroup{
+		UUID:     auth.DefaultGroupUUID,
+		Name:     "default",
+		JoinCode: joinCode,
+		AuthHash: authHash,
+	}
+
+	clientAuthConfig := &ClientAuthConfig{
+		Version:     MemberAuthConfigVersion,
+		Type:        MemberAuthConfigType,
+		MemberGroup: group,
+	}
+
+	return clientAuthConfig
 }

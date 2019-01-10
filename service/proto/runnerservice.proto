@@ -3,7 +3,6 @@ syntax = "proto3";
 import "model/proto/task.proto";
 import "auth/proto/auth.proto";
 import "common.proto";
-import "github.com/cohix/simplcrypto/proto/message.proto";
 
 package taask.server.service;
 option go_package = "github.com/taask/taask-server/service";
@@ -13,17 +12,16 @@ message Empty {}
 service RunnerService {
 	rpc AuthRunner(AuthMemberRequest) returns (AuthMemberResponse);
 	rpc RegisterRunner(RegisterRunnerRequest) returns (stream taask.server.model.Task);
-	rpc UpdateTask(taask.server.model.TaskUpdate) returns (Empty);
+	rpc UpdateTask(UpdateTaskRequest) returns (Empty);
 }
 
 message RegisterRunnerRequest {
-	string UUID = 1;
-	string Kind = 2;
-	repeated string Tags = 3;
-	simpl.crypto.Signature ChallengeSignature = 4;
+	string Kind = 1;
+	repeated string Tags = 2;
+	taask.server.auth.Session Session = 3;
 }
 
-message SetGroupAuthAttempt {
-	taask.server.auth.MemberGroup Group = 1;
-	simpl.crypto.Signature CodeSignature = 2;
+message UpdateTaskRequest {
+	taask.server.model.TaskUpdate Update = 1;
+	taask.server.auth.Session Session = 2;
 }

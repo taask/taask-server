@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"path/filepath"
 
@@ -14,7 +13,7 @@ import (
 	"github.com/taask/taask-server/storage"
 )
 
-var joinCodeWritePath = filepath.Join(config.DefaultConfigDir(), "joincode")
+var joinCodeWritePath = filepath.Join(config.DefaultServerConfigDir(), "joincode")
 
 // Bootstrap bootstraps the service
 func Bootstrap() (*brain.Manager, error) {
@@ -25,20 +24,17 @@ func Bootstrap() (*brain.Manager, error) {
 
 	defer log.LogTrace("Bootstrap")()
 
-	joinCode := auth.GenerateJoinCode()
-	defer writeJoinCode(joinCode)
-
-	runnerAuth, err := configureRunnerAuthManager(joinCode)
+	runnerAuth, err := configureRunnerAuthManager(&serverConfig.RunnerAuth.MemberGroup)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to newRunnerAuthManager")
+		return nil, errors.Wrap(err, "failed to configureRunnerAuthManager")
 	}
 
-	clientAuth, err := configureClientAuthManager(&serverConfig.ClientAuth.AdminGroup)
+	clientAuth, err := configureClientAuthManager(&serverConfig.ClientAuth.MemberGroup)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to configureClientAuthManager")
 	}
 
-	brain := brain.NewManager(joinCode, storage.NewMemory(), runnerAuth, clientAuth)
+	brain := brain.NewManager(storage.NewMemory(), runnerAuth, clientAuth)
 
 	go startMetricsServer(brain)
 
@@ -55,35 +51,31 @@ func startMetricsServer(brain *brain.Manager) {
 	}
 }
 
-func configureRunnerAuthManager(joinCode string) (*auth.InternalAuthManager, error) {
+func configureRunnerAuthManager(defaultGroup *auth.MemberGroup) (*auth.InternalAuthManager, error) {
 	manager, err := auth.NewInternalAuthManager()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to NewRunnerAuthManager")
+		return nil, errors.Wrap(err, "failed to NewInternalAuthManager")
 	}
 
-	defaultGroup := generateDefaultMemberGroup(joinCode)
-	manager.AddGroup(defaultGroup)
+	if defaultGroup.Name != "default" {
+		return nil, fmt.Errorf("runner auth config with group name %s not allowed", defaultGroup.Name)
+	}
+
+	if defaultGroup.UUID != auth.DefaultGroupUUID {
+		return nil, fmt.Errorf("runner auth config with group uuid %s not allowed", defaultGroup.UUID)
+	}
+
+	if err := manager.AddGroup(defaultGroup); err != nil {
+		return nil, errors.Wrap(err, "failed to AddGroup")
+	}
 
 	return manager, nil
-}
-
-func generateDefaultMemberGroup(joinCode string) *auth.MemberGroup {
-	authHash := auth.GroupAuthHash(joinCode, "")
-
-	group := &auth.MemberGroup{
-		UUID:     auth.DefaultGroupUUID,
-		Name:     "default",
-		JoinCode: joinCode,
-		AuthHash: authHash,
-	}
-
-	return group
 }
 
 func configureClientAuthManager(adminGroup *auth.MemberGroup) (*auth.InternalAuthManager, error) {
 	manager, err := auth.NewInternalAuthManager()
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to NewRunnerAuthManager")
+		return nil, errors.Wrap(err, "failed to NewInternalAuthManager")
 	}
 
 	if adminGroup.Name != "admin" {
@@ -99,10 +91,4 @@ func configureClientAuthManager(adminGroup *auth.MemberGroup) (*auth.InternalAut
 	}
 
 	return manager, nil
-}
-
-func writeJoinCode(joinCode string) {
-	if err := ioutil.WriteFile(joinCodeWritePath, []byte(joinCode), 0666); err != nil {
-		log.LogError(errors.Wrap(err, "failed to WriteFile join code"))
-	}
 }
