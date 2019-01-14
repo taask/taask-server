@@ -58,6 +58,7 @@ func (rs *RunnerService) AuthRunner(ctx context.Context, req *AuthMemberRequest)
 
 	resp := &AuthMemberResponse{
 		EncChallenge: encRunnerChallenge.EncSessionChallenge,
+		MasterPubKey: rs.Manager.GetMasterRunnerPubKey(),
 	}
 
 	return resp, nil

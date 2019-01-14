@@ -1,19 +1,40 @@
 serverpath = .
 servertag = dev
+	
+build/server/docker: tag/server/dev
+	docker build $(serverpath) -t taask/server:$(shell cat ./taask-server/.build/tag)
 
-server/build/docker:
-	docker build $(serverpath) -t taask/server:$(servertag)
+install/server: build/server/docker
+	helm template $(serverpath)/ops/chart \
+	--set Tag=$(shell cat ./taask-server/.build/tag) --set HomeDir=$(HOME) \
+	| linkerd inject --proxy-bind-timeout 30s - \
+	| kubectl apply -f - -n taask
 
-server/proto/model:
+logs/server:
+	kubectl logs deployment/taask-server taask-server -n taask -f
+
+logs/server/search:
+	kubectl logs deployment/taask-server taask-server -n taask -f | grep $(search)
+
+uninstall/server:
+	kubectl delete service taask-server -n taask
+	kubectl delete service taask-server-ingress -n taask
+	kubectl delete deployment taask-server -n taask
+
+tag/server/dev:
+	mkdir -p $(serverpath)/.build
+	date +%s | openssl sha256 | base64 | head -c 12 > $(serverpath)/.build/tag
+
+proto/server/model:
 	protoc -I=$(GOPATH)/src -I=. -I=model/proto --go_out=plugins=grpc:$(GOPATH)/src $(shell ls ./model/proto/)
 
-server/proto/auth:
+proto/server/auth:
 	protoc -I=$(GOPATH)/src -I=. -I=auth/proto --go_out=plugins=grpc:$(GOPATH)/src $(shell ls ./auth/proto/)
 
-server/proto/service:
+proto/server/service:
 	protoc -I=$(GOPATH)/src -I=. -I=service/proto --go_out=plugins=grpc:$(GOPATH)/src $(shell ls ./service/proto/)
 
-server/proto: server/proto/model server/proto/service server/proto/auth
+proto/server: proto/server/model proto/server/service proto/server/auth
 
 .phony: proto
 	
