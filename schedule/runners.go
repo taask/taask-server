@@ -115,6 +115,7 @@ func (rp *runnerPool) assignTaskToNextRunner(task *model.Task) (*model.Runner, e
 
 	runnerTracker := elem.Value.(*runnerLoad)
 
+	// TODO: Make the max assigned configurable
 	if runnerTracker.AssignedCount() >= 10 {
 		return nil, ErrorCapacityReached
 	}

@@ -115,5 +115,8 @@ func (m *Manager) updateListeners(task *model.Task) {
 	if task.Status == model.TaskStatusCompleted {
 		log.LogInfo(fmt.Sprintf("task %s completed, removing all update listeners", task.UUID))
 		delete(m.listeners, task.UUID)
+	} else if task.Status == model.TaskStatusFailed {
+		log.LogInfo(fmt.Sprintf("task %s failed, removing all update listeners", task.UUID))
+		delete(m.listeners, task.UUID)
 	}
 }
