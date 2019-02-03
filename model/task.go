@@ -25,11 +25,11 @@ const (
 	// complete does not indicate wether the result of the job contained an error or not, but rather that the runner was able to finish running the task
 	TaskStatusCompleted = "complete"
 
-	// task goes running -> failed if the runner cannot complete the job for whatever reason (crash, lost runner connection, etc.)
+	// task goes running -> failed if the runner cannot complete the job for whatever reason (crash, etc.)
 	TaskStatusFailed = "failed"
 
 	// task goes queued -> retrying if the runner a task was scheduled to fails to run the task
-	// task foes running -> retrying if the task (runs past the deadline OR fails) AND is marked as retryable
+	// task goes running -> retrying if the task (runs past the deadline OR runner dies) AND is marked as retryable
 	// retrying is similar to waiting, except there will be a backoff before it is re-queued
 	TaskStatusRetrying = "retrying"
 )
