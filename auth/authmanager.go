@@ -6,6 +6,7 @@ import "github.com/cohix/simplcrypto"
 const (
 	DefaultGroupUUID = "defaultgroupuuid"
 	AdminGroupUUID   = "admingroupuuid"
+	PartnerGroupUUID = "partnergroupuuid"
 )
 
 // Manager describes the interface for things that are able to manage auth
@@ -16,7 +17,9 @@ type Manager interface {
 	DeleteMemberAuth(uuid string) error
 	AddGroup(group *MemberGroup) error
 	MasterPubKey() *simplcrypto.SerializablePubKey
+	EncryptForMember(memberUUID string, msg []byte) (*simplcrypto.Message, error)
 	ReEncryptTaskKey(memberUUID string, encTaskKey *simplcrypto.Message) (*simplcrypto.Message, error)
+	VerifySignatureFromMember(memberUUID string, msg []byte, sig *simplcrypto.Signature) error
 }
 
 // EncMemberSession is sent back to the member as an auth challenge
@@ -24,7 +27,8 @@ type EncMemberSession struct {
 	EncSessionChallenge *simplcrypto.Message
 }
 
-type memberAuth struct {
+// MemberAuth represents an existing member session
+type MemberAuth struct {
 	UUID             string
 	GroupUUID        string
 	SessionChallenge []byte
