@@ -15,8 +15,9 @@ import (
 const (
 	ConfigServerBaseDir = ".taask/server/config/"
 
-	ClientAuthConfigFilename = "client-auth.yaml"
-	RunnerAuthConfigFilename = "runner-auth.yaml"
+	ClientAuthConfigFilename  = "client-auth.yaml"
+	PartnerAuthConfigFilename = "partner-auth.yaml"
+	RunnerAuthConfigFilename  = "runner-auth.yaml"
 
 	missingAdminGroupConfigWarning = `
 ########################################################
@@ -28,13 +29,15 @@ EMPTY PASSPHRASE IS INSECURE. DO NOT RUN IN PRODUCTION.
 `
 )
 
-var clientConfigPath string = path.Join(DefaultServerConfigDir(), ClientAuthConfigFilename)
-var runnerConfigPath string = path.Join(DefaultServerConfigDir(), RunnerAuthConfigFilename)
+var clientConfigPath = path.Join(DefaultServerConfigDir(), ClientAuthConfigFilename)
+var partnerConfigPath = path.Join(DefaultServerConfigDir(), PartnerAuthConfigFilename)
+var runnerConfigPath = path.Join(DefaultServerConfigDir(), RunnerAuthConfigFilename)
 
 // ServerConfig is the config for the server
 type ServerConfig struct {
-	ClientAuth *ClientAuthConfig
-	RunnerAuth *ClientAuthConfig
+	ClientAuth  *ClientAuthConfig
+	PartnerAuth *ClientAuthConfig
+	RunnerAuth  *ClientAuthConfig
 }
 
 // ServerConfigFromDefaultDir reads the server config from the default directory
@@ -53,6 +56,13 @@ func ServerConfigFromDefaultDir() (*ServerConfig, error) {
 		log.LogInfo("loaded client auth from file")
 	}
 
+	partnerAuthConfig, err := clientAuthConfigFromFile(partnerConfigPath)
+	if err != nil {
+		log.LogWarn("partner auth file not found, federation will not be available")
+	} else {
+		log.LogInfo("loaded client auth from file")
+	}
+
 	runnerAuthConfig, err := clientAuthConfigFromFile(runnerConfigPath)
 	if err != nil {
 		runnerAuthConfig = generateDefaultRunnerGroup()
@@ -67,8 +77,9 @@ func ServerConfigFromDefaultDir() (*ServerConfig, error) {
 	}
 
 	config := &ServerConfig{
-		ClientAuth: clientAuthConfig,
-		RunnerAuth: runnerAuthConfig,
+		ClientAuth:  clientAuthConfig,
+		PartnerAuth: partnerAuthConfig,
+		RunnerAuth:  runnerAuthConfig,
 	}
 
 	return config, nil
