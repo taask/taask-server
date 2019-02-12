@@ -1,6 +1,5 @@
 syntax = "proto3";
 
-import "common.proto";
 import "auth/proto/auth.proto";
 import "model/proto/task.proto";
 import "github.com/cohix/simplcrypto/proto/message.proto";
@@ -9,7 +8,7 @@ package taask.server.service;
 option go_package = "github.com/taask/taask-server/service";
 
 service TaskService {
-	rpc AuthClient(AuthMemberRequest) returns (AuthMemberResponse);
+	rpc AuthClient(taask.server.auth.Attempt) returns (taask.server.auth.AttemptResponse);
 	rpc Queue (QueueTaskRequest) returns (QueueTaskResponse);
 	rpc CheckTask(CheckTaskRequest) returns (stream CheckTaskResponse);
 }

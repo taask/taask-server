@@ -68,7 +68,7 @@ func (am *InternalAuthManager) AttemptAuth(attempt *Attempt) (*EncMemberSession,
 		return nil, errors.Wrap(err, "failed to KeyPairFromSerializedPubKey")
 	}
 
-	if err := pubkey.Verify(hashWithNonce, attempt.AuthHashSig); err != nil {
+	if err := pubkey.Verify(hashWithNonce, attempt.AuthHashSignature); err != nil {
 		return nil, errors.Wrap(err, "failed to Verify")
 	}
 

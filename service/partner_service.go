@@ -9,6 +9,7 @@ import (
 	"github.com/taask/taask-server/auth"
 	"github.com/taask/taask-server/brain"
 	"github.com/taask/taask-server/model"
+	"github.com/taask/taask-server/partner"
 	context "golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -25,7 +26,7 @@ func StartPartnerService(brain *brain.Manager, errChan chan error) {
 
 	grpcServer := grpc.NewServer()
 
-	RegisterPartnerServiceServer(grpcServer, &PartnerService{Manager: brain})
+	partner.RegisterPartnerServiceServer(grpcServer, &PartnerService{Manager: brain})
 
 	log.LogInfo("starting taask-server partner service on :3690")
 	if err := grpcServer.Serve(lis); err != nil {
@@ -39,23 +40,15 @@ type PartnerService struct {
 }
 
 // AuthPartner allows a partner to authenticate and get a session
-func (ps *PartnerService) AuthPartner(ctx context.Context, req *AuthMemberRequest) (*AuthMemberResponse, error) {
+func (ps *PartnerService) AuthPartner(ctx context.Context, attempt *auth.Attempt) (*auth.AttemptResponse, error) {
 	defer log.LogTrace("AuthPartner")()
-
-	attempt := &auth.Attempt{
-		MemberUUID:  req.UUID,
-		GroupUUID:   auth.DefaultGroupUUID,
-		PubKey:      req.PubKey,
-		AuthHashSig: req.AuthHashSignature,
-		Timestamp:   req.Timestamp,
-	}
 
 	encPartnerChallenge, err := ps.Manager.AttemptRunnerAuth(attempt)
 	if err != nil {
 		return nil, err
 	}
 
-	resp := &AuthMemberResponse{
+	resp := &auth.AttemptResponse{
 		EncChallenge: encPartnerChallenge.EncSessionChallenge,
 		MasterPubKey: ps.Manager.GetMasterRunnerPubKey(),
 	}
@@ -64,7 +57,7 @@ func (ps *PartnerService) AuthPartner(ctx context.Context, req *AuthMemberReques
 }
 
 // StreamUpdates enables sync between partners
-func (ps *PartnerService) StreamUpdates(stream PartnerService_StreamUpdatesServer) error {
+func (ps *PartnerService) StreamUpdates(stream partner.PartnerService_StreamUpdatesServer) error {
 	return nil
 }
 

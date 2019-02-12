@@ -31,10 +31,13 @@ proto/server/model:
 proto/server/auth:
 	protoc -I=$(GOPATH)/src -I=. -I=auth/proto --go_out=plugins=grpc:$(GOPATH)/src $(shell ls ./auth/proto/)
 
+proto/server/partner:
+	protoc -I=$(GOPATH)/src -I=. -I=partner/proto --go_out=plugins=grpc:$(GOPATH)/src $(shell ls ./partner/proto/)
+
 proto/server/service:
 	protoc -I=$(GOPATH)/src -I=. -I=service/proto --go_out=plugins=grpc:$(GOPATH)/src $(shell ls ./service/proto/)
 
-proto/server: proto/server/model proto/server/service proto/server/auth
+proto/server: proto/server/model proto/server/service proto/server/auth proto/server/partner
 
 .phony: proto
 	

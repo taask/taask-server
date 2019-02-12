@@ -2,29 +2,46 @@ package partner
 
 import (
 	"time"
-
-	"github.com/taask/taask-server/service"
 )
 
 type healthChecker struct {
-	IsHealthy bool
-	stream    service.PartnerService_StreamUpdatesClient
+	IsHealthy     bool
+	UnhealthyChan chan error
 }
 
-func newHealthChecker(stream service.PartnerService_StreamUpdatesClient) *healthChecker {
+func newHealthChecker() *healthChecker {
 	return &healthChecker{
-		IsHealthy: true,
-		stream:    stream,
+		UnhealthyChan: make(chan error),
 	}
 }
 
-func (hc *healthChecker) startHealthChecking() {
+func (hc *healthChecker) startHealthCheckingWithClient(stream PartnerService_StreamUpdatesClient) {
 	for {
 		<-time.After(time.Duration(time.Second * 30))
 
-		if err := hc.stream.Send(&service.UpdateRequest{IsHealthCheck: true}); err != nil {
+		if err := stream.Send(&UpdateRequest{IsHealthCheck: true}); err != nil {
 			hc.IsHealthy = false
+			hc.UnhealthyChan <- err
 			break
 		}
+
+		hc.IsHealthy = true
+	}
+}
+
+func (hc *healthChecker) startHealthCheckingWithServer(stream PartnerService_StreamUpdatesServer) {
+	for {
+		<-time.After(time.Duration(time.Second * 30))
+
+		if err := stream.Send(&UpdateRequest{IsHealthCheck: true}); err != nil {
+			hc.IsHealthy = false
+			hc.UnhealthyChan <- err
+
+			// TODO: make this less fragile
+			hc.UnhealthyChan <- err // do it twice so that the streamUpdates loop and the waiting Start() loop knows
+			break
+		}
+
+		hc.IsHealthy = true
 	}
 }

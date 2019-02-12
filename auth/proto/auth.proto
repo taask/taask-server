@@ -10,8 +10,13 @@ message Attempt {
 	string MemberUUID = 1;
 	string GroupUUID = 2;
 	simpl.crypto.SerializablePubKey PubKey = 3;
-	simpl.crypto.Signature AuthHashSig = 4;
+	simpl.crypto.Signature AuthHashSignature = 4;
 	int64 Timestamp = 5;
+}
+
+message AttemptResponse {
+	simpl.crypto.Message EncChallenge = 1;
+	simpl.crypto.SerializablePubKey MasterPubKey = 2;
 }
 
 message Session {

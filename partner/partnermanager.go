@@ -2,6 +2,7 @@ package partner
 
 import (
 	"encoding/json"
+	"fmt"
 	"sync"
 	"time"
 
@@ -10,7 +11,6 @@ import (
 	"github.com/taask/taask-server/auth"
 	"github.com/taask/taask-server/config"
 	"github.com/taask/taask-server/model"
-	"github.com/taask/taask-server/service"
 )
 
 // Manager controls partner updating and health checking
@@ -18,7 +18,7 @@ type Manager struct {
 	// our UUID, for auth purposes
 	UUID string
 
-	// the auth manager responsible for partners
+	// the auth manager responsible for incoming partners
 	Auth auth.Manager
 
 	// this is the same keypair that our authManager is created with,
@@ -38,13 +38,13 @@ type Manager struct {
 // Partner describes a partner server
 type Partner struct {
 	UUID   string
-	Client service.PartnerServiceClient
+	Client PartnerServiceClient
 
 	host string
 	port string
 
-	// healthChecker sends heartbeats to the partner
-	healthChecker healthChecker
+	// healthChecker maintains the health of the partner
+	HealthChecker *healthChecker
 
 	// The session that we (as the outgoing partner) hold for the incoming partner
 	ActiveSession *activeSession
@@ -64,9 +64,9 @@ type activeSession struct {
 }
 
 // NewManager creates a new partner manager
-func NewManager(config *config.ClientAuthConfig, masterKeypair *simplcrypto.KeyPair) *Manager {
+func NewManager(config *config.ClientAuthConfig, masterKeypair *simplcrypto.KeyPair) (*Manager, error) {
 	if config.Service == nil {
-		return nil
+		return nil, nil
 	}
 
 	partner := &Partner{
@@ -77,14 +77,35 @@ func NewManager(config *config.ClientAuthConfig, masterKeypair *simplcrypto.KeyP
 
 	uuid := model.NewPartnerUUID()
 
-	return &Manager{
-		UUID:    uuid,
-		partner: partner,
-		config:  config,
+	authMan, err := auth.NewInternalAuthManagerWithMasterKeypair(masterKeypair)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to NewInternalAuthManager")
 	}
+
+	if config.MemberGroup.Name != "partner" {
+		return nil, fmt.Errorf("client auth config with group name %s not allowed", config.MemberGroup.Name)
+	}
+
+	if config.MemberGroup.UUID != auth.PartnerGroupUUID {
+		return nil, fmt.Errorf("client auth config with group uuid %s not allowed", config.MemberGroup.UUID)
+	}
+
+	if err := authMan.AddGroup(&config.MemberGroup); err != nil {
+		return nil, errors.Wrap(err, "failed to AddGroup")
+	}
+
+	manager := &Manager{
+		UUID:          uuid,
+		partner:       partner,
+		config:        config,
+		Auth:          authMan,
+		masterKeypair: masterKeypair,
+	}
+
+	return manager, nil
 }
 
-func (m *Manager) streamUpdates(recvChan chan *Update) error {
+func (m *Manager) streamUpdates(recvChan chan *Update, unhealthyChan chan error) error {
 	// the inner loop does partner sync (flushes the queued updates, receives updates)
 	timeChan := make(chan time.Time)
 
@@ -95,6 +116,8 @@ func (m *Manager) streamUpdates(recvChan chan *Update) error {
 		case <-timeChan:
 			// TODO: determine if flushupdates should be allowed to set the next time or not
 			go m.flushUpdates(timeChan)
+		case err := <-unhealthyChan:
+			return errors.Wrap(err, "Partner Manager detects unhealthy partner, terminating update stream")
 		}
 	}
 }
@@ -121,7 +144,7 @@ func (p *Partner) lockUnlock() func() {
 	}
 }
 
-func (m *Manager) decryptAndVerifyUpdateFromPartner(partner *Partner, updateReq *service.UpdateRequest) (*Update, error) {
+func (m *Manager) decryptAndVerifyUpdateFromPartner(partner *Partner, updateReq *UpdateRequest) (*Update, error) {
 	if partner.DataKey == nil {
 		return nil, errors.New("missing data key for partner")
 	}

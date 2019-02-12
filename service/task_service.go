@@ -38,23 +38,15 @@ type TaskService struct {
 }
 
 // AuthClient handles authenticating a client
-func (ts TaskService) AuthClient(ctx context.Context, req *AuthMemberRequest) (*AuthMemberResponse, error) {
+func (ts TaskService) AuthClient(ctx context.Context, attempt *auth.Attempt) (*auth.AttemptResponse, error) {
 	defer log.LogTrace("AuthClient")()
-
-	attempt := &auth.Attempt{
-		MemberUUID:  req.UUID,
-		GroupUUID:   req.GroupUUID,
-		PubKey:      req.PubKey,
-		AuthHashSig: req.AuthHashSignature,
-		Timestamp:   req.Timestamp,
-	}
 
 	encRunnerChallenge, err := ts.Manager.AttemptClientAuth(attempt)
 	if err != nil {
 		return nil, err
 	}
 
-	resp := &AuthMemberResponse{
+	resp := &auth.AttemptResponse{
 		EncChallenge: encRunnerChallenge.EncSessionChallenge,
 		MasterPubKey: ts.Manager.GetMasterRunnerPubKey(),
 	}

@@ -40,23 +40,15 @@ type RunnerService struct {
 }
 
 // AuthRunner allows a runner to advertise itself and perform auth with the server
-func (rs *RunnerService) AuthRunner(ctx context.Context, req *AuthMemberRequest) (*AuthMemberResponse, error) {
+func (rs *RunnerService) AuthRunner(ctx context.Context, attempt *auth.Attempt) (*auth.AttemptResponse, error) {
 	defer log.LogTrace("AuthRunner")()
-
-	attempt := &auth.Attempt{
-		MemberUUID:  req.UUID,
-		GroupUUID:   auth.DefaultGroupUUID,
-		PubKey:      req.PubKey,
-		AuthHashSig: req.AuthHashSignature,
-		Timestamp:   req.Timestamp,
-	}
 
 	encRunnerChallenge, err := rs.Manager.AttemptRunnerAuth(attempt)
 	if err != nil {
 		return nil, err
 	}
 
-	resp := &AuthMemberResponse{
+	resp := &auth.AttemptResponse{
 		EncChallenge: encRunnerChallenge.EncSessionChallenge,
 		MasterPubKey: rs.Manager.GetMasterRunnerPubKey(),
 	}

@@ -37,7 +37,7 @@ type Manager struct {
 }
 
 // NewManager creates a new manager
-func NewManager(storage storage.Manager, runnerAuth, clientAuth, partnerAuth auth.Manager) *Manager {
+func NewManager(storage storage.Manager, runnerAuth, clientAuth auth.Manager, partnerManager *partner.Manager) *Manager {
 	metrics, err := metrics.NewManager()
 	if err != nil {
 		log.LogError(errors.Wrap(err, "failed to metrics.NewManager"))
@@ -59,7 +59,7 @@ func NewManager(storage storage.Manager, runnerAuth, clientAuth, partnerAuth aut
 
 		clientAuth: clientAuth,
 
-		partnerAuth: partnerAuth,
+		PartnerManager: partnerManager,
 
 		metrics: metrics,
 	}

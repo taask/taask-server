@@ -36,12 +36,12 @@ func Bootstrap() (*brain.Manager, error) {
 		return nil, errors.Wrap(err, "failed to configureClientAuthManager")
 	}
 
-	partnerAuth, err := configureClientAuthManager(&serverConfig.PartnerAuth.MemberGroup)
+	partnerManager, err := configurePartnerManager(serverConfig.PartnerAuth)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to configureClientAuthManager")
 	}
 
-	brain := brain.NewManager(storage.NewMemory(), runnerAuth, clientAuth, partnerAuth)
+	brain := brain.NewManager(storage.NewMemory(), runnerAuth, clientAuth, partnerManager)
 
 	go startMetricsServer(brain)
 
@@ -104,23 +104,6 @@ func configurePartnerManager(config *config.ClientAuthConfig) (*partner.Manager,
 	masterKeypair, err := simplcrypto.GenerateMasterKeyPair()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to GenerateMasterKeyPair")
-	}
-
-	manager, err := auth.NewInternalAuthManagerWithMasterKeypair(masterKeypair)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to NewInternalAuthManager")
-	}
-
-	if config.MemberGroup.Name != "partner" {
-		return nil, fmt.Errorf("client auth config with group name %s not allowed", config.MemberGroup.Name)
-	}
-
-	if config.MemberGroup.UUID != auth.PartnerGroupUUID {
-		return nil, fmt.Errorf("client auth config with group uuid %s not allowed", config.MemberGroup.UUID)
-	}
-
-	if err := manager.AddGroup(&config.MemberGroup); err != nil {
-		return nil, errors.Wrap(err, "failed to AddGroup")
 	}
 
 	partnerManager, err := partner.NewManager(config, masterKeypair)

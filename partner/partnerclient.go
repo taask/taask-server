@@ -11,14 +11,20 @@ import (
 	log "github.com/cohix/simplog"
 	"github.com/pkg/errors"
 	"github.com/taask/taask-server/auth"
-	"github.com/taask/taask-server/service"
 	"google.golang.org/grpc"
 )
 
 // Start starts the partner manager
 func (m *Manager) Start() {
-	// outer loop allows us to recreate the stream whenever it dies
 	for {
+		if m.partner.HealthChecker != nil {
+			if m.partner.HealthChecker.IsHealthy {
+				if err := <-m.partner.HealthChecker.UnhealthyChan; err != nil {
+					log.LogError(errors.Wrap(err, "partner healthChecker reported unhealthy, will retry in 5s"))
+				}
+			}
+		}
+
 		<-time.After(time.Duration(time.Second * 5))
 
 		if err := m.partner.initClient(); err != nil {
@@ -42,18 +48,21 @@ func (m *Manager) Start() {
 			continue
 		}
 
-		recvChan := streamClientRecvChan(m.partner, client)
+		recvChan := m.streamClientRecvChan(m.partner, client)
 
-		if err := m.streamUpdates(recvChan); err != nil {
+		m.partner.HealthChecker = newHealthChecker()
+		m.partner.HealthChecker.startHealthCheckingWithClient(client)
+
+		if err := m.streamUpdates(recvChan, m.partner.HealthChecker.UnhealthyChan); err != nil {
 			log.LogWarn(errors.Wrap(err, "PartnerManager encountered streamUpdatesError, will retry in 5s").Error())
 		}
 	}
 }
 
-func streamClientRecvChan(partner *Partner, client service.PartnerService_StreamUpdatesClient) chan *Update {
+func (m *Manager) streamClientRecvChan(partner *Partner, client PartnerService_StreamUpdatesClient) chan *Update {
 	recvChan := make(chan *Update)
 
-	go func(client service.PartnerService_StreamUpdatesClient, recvChan chan *Update) {
+	go func(client PartnerService_StreamUpdatesClient, recvChan chan *Update) {
 		for {
 			updateReq, err := client.Recv()
 			if err != nil {
@@ -61,7 +70,7 @@ func streamClientRecvChan(partner *Partner, client service.PartnerService_Stream
 				break
 			}
 
-			update, err := decryptAndVerifyUpdateFromPartner(partner, updateReq)
+			update, err := m.decryptAndVerifyUpdateFromPartner(partner, updateReq)
 			if err != nil {
 				log.LogWarn(errors.Wrap(err, "failed to decryptAndVerifyUpdateFromPartner").Error())
 				continue
@@ -80,7 +89,7 @@ func (p *Partner) initClient() error {
 		return errors.Wrap(err, "failed to Dial")
 	}
 
-	client := service.NewPartnerServiceClient(conn)
+	client := NewPartnerServiceClient(conn)
 
 	p.Client = client
 
@@ -104,8 +113,8 @@ func (m *Manager) authenticatePartner(partner *Partner) error {
 		return errors.Wrap(err, "failed to Sign")
 	}
 
-	attempt := &service.AuthMemberRequest{
-		UUID:              m.UUID,
+	attempt := &auth.Attempt{
+		MemberUUID:        m.UUID,
 		GroupUUID:         m.config.MemberGroup.UUID,
 		PubKey:            keypair.SerializablePubKey(),
 		AuthHashSignature: authHashSig,
@@ -147,7 +156,7 @@ func (m *Manager) authenticatePartner(partner *Partner) error {
 	return nil
 }
 
-func (m *Manager) receiveDataKeyFromPartner(partner *Partner, client service.PartnerService_StreamUpdatesClient) error {
+func (m *Manager) receiveDataKeyFromPartner(partner *Partner, client PartnerService_StreamUpdatesClient) error {
 	updateReq, err := client.Recv()
 	if err != nil {
 		return errors.Wrap(err, "failed to Recv data key update")
