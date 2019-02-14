@@ -14,7 +14,7 @@ type InternalAuthManager struct {
 	memberGroups map[string]*MemberGroup
 
 	// maps member UUIDs to memberAuths
-	authedMembers map[string]*memberAuth
+	authedMembers map[string]*MemberAuth
 
 	// the master keypair
 	masterKeyPair *simplcrypto.KeyPair
@@ -29,8 +29,19 @@ func NewInternalAuthManager() (*InternalAuthManager, error) {
 
 	manager := &InternalAuthManager{
 		memberGroups:  make(map[string]*MemberGroup),
-		authedMembers: make(map[string]*memberAuth),
+		authedMembers: make(map[string]*MemberAuth),
 		masterKeyPair: masterPair,
+	}
+
+	return manager, nil
+}
+
+// NewInternalAuthManagerWithMasterKeypair returns a new InternalAuthManager
+func NewInternalAuthManagerWithMasterKeypair(keypair *simplcrypto.KeyPair) (*InternalAuthManager, error) {
+	manager := &InternalAuthManager{
+		memberGroups:  make(map[string]*MemberGroup),
+		authedMembers: make(map[string]*MemberAuth),
+		masterKeyPair: keypair,
 	}
 
 	return manager, nil
@@ -57,7 +68,7 @@ func (am *InternalAuthManager) AttemptAuth(attempt *Attempt) (*EncMemberSession,
 		return nil, errors.Wrap(err, "failed to KeyPairFromSerializedPubKey")
 	}
 
-	if err := pubkey.Verify(hashWithNonce, attempt.AuthHashSig); err != nil {
+	if err := pubkey.Verify(hashWithNonce, attempt.AuthHashSignature); err != nil {
 		return nil, errors.Wrap(err, "failed to Verify")
 	}
 
@@ -71,7 +82,7 @@ func (am *InternalAuthManager) AttemptAuth(attempt *Attempt) (*EncMemberSession,
 		return nil, errors.Wrap(err, "failed to Encrypt challenge")
 	}
 
-	memberAuth := &memberAuth{
+	memberAuth := &MemberAuth{
 		UUID:             attempt.MemberUUID,
 		GroupUUID:        attempt.GroupUUID,
 		SessionChallenge: challenge,
@@ -154,6 +165,21 @@ func (am *InternalAuthManager) MasterPubKey() *simplcrypto.SerializablePubKey {
 	return am.masterKeyPair.SerializablePubKey()
 }
 
+// EncryptForMember allows messages to be encrypted for members
+func (am *InternalAuthManager) EncryptForMember(memberUUID string, msg []byte) (*simplcrypto.Message, error) {
+	memberAuth, ok := am.authedMembers[memberUUID]
+	if !ok {
+		return nil, errors.New(fmt.Sprintf("member %s key does not exist", memberUUID))
+	}
+
+	encMessage, err := memberAuth.PubKey.Encrypt(msg)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to Encrypt task key")
+	}
+
+	return encMessage, nil
+}
+
 // ReEncryptTaskKey re-encrypts a task key using a member's pubkey
 func (am *InternalAuthManager) ReEncryptTaskKey(memberUUID string, encTaskKey *simplcrypto.Message) (*simplcrypto.Message, error) {
 	memberAuth, ok := am.authedMembers[memberUUID]
@@ -172,4 +198,18 @@ func (am *InternalAuthManager) ReEncryptTaskKey(memberUUID string, encTaskKey *s
 	}
 
 	return reEncKey, nil
+}
+
+// VerifySignatureFromMember allows messages to be encrypted for members
+func (am *InternalAuthManager) VerifySignatureFromMember(memberUUID string, msg []byte, sig *simplcrypto.Signature) error {
+	memberAuth, ok := am.authedMembers[memberUUID]
+	if !ok {
+		return errors.New(fmt.Sprintf("member %s key does not exist", memberUUID))
+	}
+
+	if err := memberAuth.PubKey.Verify(msg, sig); err != nil {
+		return errors.Wrap(err, "failed to Verify")
+	}
+
+	return nil
 }

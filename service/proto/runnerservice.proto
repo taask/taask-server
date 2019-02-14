@@ -2,7 +2,6 @@ syntax = "proto3";
 
 import "model/proto/task.proto";
 import "auth/proto/auth.proto";
-import "common.proto";
 
 package taask.server.service;
 option go_package = "github.com/taask/taask-server/service";
@@ -10,7 +9,7 @@ option go_package = "github.com/taask/taask-server/service";
 message Empty {}
 
 service RunnerService {
-	rpc AuthRunner(AuthMemberRequest) returns (AuthMemberResponse);
+	rpc AuthRunner(taask.server.auth.Attempt) returns (taask.server.auth.AttemptResponse);
 	rpc RegisterRunner(RegisterRunnerRequest) returns (stream taask.server.model.Task);
 	rpc UpdateTask(UpdateTaskRequest) returns (Empty);
 }

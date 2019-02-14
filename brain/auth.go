@@ -1,6 +1,9 @@
 package brain
 
-import "github.com/taask/taask-server/auth"
+import (
+	"github.com/taask/taask-server/auth"
+	"github.com/taask/taask-server/partner"
+)
 
 // AttemptRunnerAuth allows a runner to auth
 func (m *Manager) AttemptRunnerAuth(attempt *auth.Attempt) (*auth.EncMemberSession, error) {
@@ -25,4 +28,25 @@ func (m *Manager) CheckClientAuth(session *auth.Session) error {
 // CheckClientAdminAuth checks client auth
 func (m *Manager) CheckClientAdminAuth(session *auth.Session) error {
 	return m.clientAuth.CheckAuthEnsureAdmin(session)
+}
+
+// AttemptPartnerAuth allows a partner to auth
+func (m *Manager) AttemptPartnerAuth(attempt *auth.Attempt) (*auth.EncMemberSession, error) {
+	// TODO: figure out a less gross way to tell the partnerManager about the partner's UUID
+	// we're doing it this way right now because we want AuthManager to be generalized,
+	// but this is a special case of needing to know the internals of auth
+
+	encMemberSession, err := m.PartnerManager.Auth.AttemptAuth(attempt)
+	if err != nil {
+		return nil, err
+	}
+
+	m.PartnerManager.SetPartner(&partner.Partner{UUID: attempt.MemberUUID})
+
+	return encMemberSession, nil
+}
+
+// CheckPartnerAuth checks partner auth
+func (m *Manager) CheckPartnerAuth(session *auth.Session) error {
+	return m.PartnerManager.Auth.CheckAuth(session)
 }

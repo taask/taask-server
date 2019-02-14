@@ -13,6 +13,10 @@ import (
 const (
 	MemberAuthConfigVersion = 1
 	MemberAuthConfigType    = "com.taask.config.memberauth"
+
+	ServiceTypeClient  = "com.taask.service.client"
+	ServiceTypeRunner  = "com.taask.service.runner"
+	ServiceTypePartner = "com.taask.service.partner"
 )
 
 // ClientAuthConfig is the config for client auth
@@ -20,6 +24,14 @@ type ClientAuthConfig struct {
 	Version     int
 	Type        string
 	MemberGroup auth.MemberGroup
+	Service     *Service
+}
+
+// Service represents the Service being connected to
+type Service struct {
+	Type string
+	Host string
+	Port string
 }
 
 func clientAuthConfigFromFile(filepath string) (*ClientAuthConfig, error) {

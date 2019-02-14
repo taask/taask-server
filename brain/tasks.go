@@ -16,7 +16,7 @@ func (m *Manager) ScheduleTask(task *model.Task) (string, error) {
 	task.Status = ""      // clear this in case it was set
 	task.Meta.Version = 0 // set this to 0
 	if task.Meta.TimeoutSeconds == 0 {
-		task.Meta.TimeoutSeconds = 600 // 10m default
+		task.Meta.TimeoutSeconds = 600 // 10m default; TODO: make this configurable
 	}
 
 	if err := m.storage.Add(*task); err != nil {

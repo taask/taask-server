@@ -7,6 +7,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/taask/taask-server/auth"
 	"github.com/taask/taask-server/metrics"
+	"github.com/taask/taask-server/partner"
 	"github.com/taask/taask-server/schedule"
 	"github.com/taask/taask-server/storage"
 	"github.com/taask/taask-server/update"
@@ -28,12 +29,15 @@ type Manager struct {
 	// clientAuth manages the authentication of clients
 	clientAuth auth.Manager
 
+	// PartnerManager manages the authentication of partners
+	PartnerManager *partner.Manager
+
 	// metrics manages observability
 	metrics *metrics.Manager
 }
 
 // NewManager creates a new manager
-func NewManager(storage storage.Manager, runnerAuth, clientAuth auth.Manager) *Manager {
+func NewManager(storage storage.Manager, runnerAuth, clientAuth auth.Manager, partnerManager *partner.Manager) *Manager {
 	metrics, err := metrics.NewManager()
 	if err != nil {
 		log.LogError(errors.Wrap(err, "failed to metrics.NewManager"))
@@ -54,6 +58,8 @@ func NewManager(storage storage.Manager, runnerAuth, clientAuth auth.Manager) *M
 		runnerAuth: runnerAuth,
 
 		clientAuth: clientAuth,
+
+		PartnerManager: partnerManager,
 
 		metrics: metrics,
 	}

@@ -21,8 +21,13 @@ func NewTaskUUID() string {
 	return lowercaseUUID()
 }
 
-// NewRunnerUUID returns a new task UUID
+// NewRunnerUUID returns a new runner UUID
 func NewRunnerUUID() string {
+	return uppercaseUUID()
+}
+
+// NewPartnerUUID returns a new partner UUID
+func NewPartnerUUID() string {
 	return uppercaseUUID()
 }
 

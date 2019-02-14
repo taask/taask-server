@@ -5,11 +5,13 @@ import (
 	"net/http"
 	"path/filepath"
 
+	"github.com/cohix/simplcrypto"
 	log "github.com/cohix/simplog"
 	"github.com/pkg/errors"
 	"github.com/taask/taask-server/auth"
 	"github.com/taask/taask-server/brain"
 	"github.com/taask/taask-server/config"
+	"github.com/taask/taask-server/partner"
 	"github.com/taask/taask-server/storage"
 )
 
@@ -34,7 +36,14 @@ func Bootstrap() (*brain.Manager, error) {
 		return nil, errors.Wrap(err, "failed to configureClientAuthManager")
 	}
 
-	brain := brain.NewManager(storage.NewMemory(), runnerAuth, clientAuth)
+	partnerManager, err := configurePartnerManager(serverConfig.PartnerAuth)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to configureClientAuthManager")
+	}
+
+	go partnerManager.Run()
+
+	brain := brain.NewManager(storage.NewMemory(), runnerAuth, clientAuth, partnerManager)
 
 	go startMetricsServer(brain)
 
@@ -91,4 +100,18 @@ func configureClientAuthManager(adminGroup *auth.MemberGroup) (*auth.InternalAut
 	}
 
 	return manager, nil
+}
+
+func configurePartnerManager(config *config.ClientAuthConfig) (*partner.Manager, error) {
+	masterKeypair, err := simplcrypto.GenerateMasterKeyPair()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to GenerateMasterKeyPair")
+	}
+
+	partnerManager, err := partner.NewManager(config, masterKeypair)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to NewManager")
+	}
+
+	return partnerManager, nil
 }
