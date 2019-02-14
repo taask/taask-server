@@ -117,7 +117,7 @@ func (m *Manager) streamUpdates(recvChan chan *Update, unhealthyChan chan error)
 			// TODO: determine if flushupdates should be allowed to set the next time or not
 			go m.flushUpdates(timeChan)
 		case err := <-unhealthyChan:
-			return errors.Wrap(err, "Partner Manager detects unhealthy partner, terminating update stream")
+			return errors.Wrap(err, "PartnerManager detects unhealthy partner, terminating update stream")
 		}
 	}
 }

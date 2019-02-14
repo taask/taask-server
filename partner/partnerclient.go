@@ -14,8 +14,8 @@ import (
 	"google.golang.org/grpc"
 )
 
-// Start starts the partner manager
-func (m *Manager) Start() {
+// Run starts the partner manager
+func (m *Manager) Run() {
 	for {
 		if m.partner.HealthChecker != nil {
 			if m.partner.HealthChecker.IsHealthy {

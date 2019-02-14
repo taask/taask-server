@@ -36,12 +36,12 @@ func (m *Manager) AttemptPartnerAuth(attempt *auth.Attempt) (*auth.EncMemberSess
 	// we're doing it this way right now because we want AuthManager to be generalized,
 	// but this is a special case of needing to know the internals of auth
 
-	m.PartnerManager.SetPartner(&partner.Partner{UUID: attempt.MemberUUID})
 	encMemberSession, err := m.PartnerManager.Auth.AttemptAuth(attempt)
 	if err != nil {
-		m.PartnerManager.SetPartner(nil)
 		return nil, err
 	}
+
+	m.PartnerManager.SetPartner(&partner.Partner{UUID: attempt.MemberUUID})
 
 	return encMemberSession, nil
 }

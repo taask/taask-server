@@ -58,6 +58,10 @@ func (ps *PartnerService) AuthPartner(ctx context.Context, attempt *auth.Attempt
 
 // StreamUpdates enables sync between partners
 func (ps *PartnerService) StreamUpdates(stream partner.PartnerService_StreamUpdatesServer) error {
+	if err := ps.Manager.PartnerManager.RunWithServer(stream); err != nil {
+		return errors.Wrap(err, "StreamUpdates failed to StartWithServer")
+	}
+
 	return nil
 }
 

@@ -24,7 +24,8 @@ spec:
         - containerPort: 3687
         - containerPort: 3688
         - containerPort: 3689
-        - containerPort: 6060
+        - containerPort: 3690
+        # - containerPort: 6060
         volumeMounts:
         - mountPath: /root/.taask/server/config
           name: taask-config
@@ -51,6 +52,8 @@ spec:
     port: 3687
   - name: metrics
     port: 3689
+  - name: partner
+    port: 3690
 
 ---
 
@@ -66,10 +69,10 @@ spec:
     port: 3688
     protocol: TCP
     nodePort: 30688
-  - name: pprof
-    port: 6060
-    protocol: TCP
-    nodePort: 30600
+  # - name: pprof
+  #   port: 6060
+  #   protocol: TCP
+  #   nodePort: 30600
   selector:
     io.taask/component: taask-server
   type: NodePort

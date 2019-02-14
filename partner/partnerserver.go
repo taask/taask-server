@@ -6,23 +6,18 @@ import (
 	"github.com/pkg/errors"
 )
 
-// StartWithServer is analagous to Start(), but using a gRPC server instead of a client
-func (m *Manager) StartWithServer(server PartnerService_StreamUpdatesServer) {
-	for {
-		if err := m.generateAndSendDataKeyToPartner(m.partner, server); err != nil {
-			log.LogWarn(errors.Wrap(err, "PartnerManager failed to generateAndSendDataKeyToPartner, will retry in 5s").Error())
-			continue
-		}
-
-		recvChan := m.streamServerRecvChan(m.partner, server)
-
-		m.partner.HealthChecker = newHealthChecker()
-		m.partner.HealthChecker.startHealthCheckingWithServer(server)
-
-		if err := m.streamUpdates(recvChan, m.partner.HealthChecker.UnhealthyChan); err != nil {
-			log.LogWarn(errors.Wrap(err, "PartnerManager encountered streamUpdatesError, will retry in 5s").Error())
-		}
+// RunWithServer is analagous to Start(), but using a gRPC server instead of a client
+func (m *Manager) RunWithServer(server PartnerService_StreamUpdatesServer) error {
+	if err := m.generateAndSendDataKeyToPartner(m.partner, server); err != nil {
+		return errors.Wrap(err, "PartnerManager failed to generateAndSendDataKeyToPartner")
 	}
+
+	recvChan := m.streamServerRecvChan(m.partner, server)
+
+	m.partner.HealthChecker = newHealthChecker()
+	m.partner.HealthChecker.startHealthCheckingWithServer(server)
+
+	return m.streamUpdates(recvChan, m.partner.HealthChecker.UnhealthyChan)
 }
 
 func (m *Manager) streamServerRecvChan(partner *Partner, server PartnerService_StreamUpdatesServer) chan *Update {

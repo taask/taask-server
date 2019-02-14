@@ -38,7 +38,7 @@ func (hc *healthChecker) startHealthCheckingWithServer(stream PartnerService_Str
 			hc.UnhealthyChan <- err
 
 			// TODO: make this less fragile
-			hc.UnhealthyChan <- err // do it twice so that the streamUpdates loop and the waiting Start() loop knows
+			hc.UnhealthyChan <- err // do it twice so that the streamUpdates loop and the waiting Run() loop knows
 			break
 		}
 

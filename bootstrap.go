@@ -41,6 +41,8 @@ func Bootstrap() (*brain.Manager, error) {
 		return nil, errors.Wrap(err, "failed to configureClientAuthManager")
 	}
 
+	go partnerManager.Run()
+
 	brain := brain.NewManager(storage.NewMemory(), runnerAuth, clientAuth, partnerManager)
 
 	go startMetricsServer(brain)
