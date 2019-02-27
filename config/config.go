@@ -60,7 +60,7 @@ func ServerConfigFromDefaultDir() (*ServerConfig, error) {
 	if err != nil {
 		log.LogWarn("partner auth file not found, federation will not be available")
 	} else {
-		log.LogInfo("loaded client auth from file")
+		log.LogInfo("loaded partner auth from file")
 	}
 
 	runnerAuthConfig, err := clientAuthConfigFromFile(runnerConfigPath)

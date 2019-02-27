@@ -10,6 +10,12 @@ install/server: build/server/docker
 	| linkerd inject --proxy-bind-timeout 30s - \
 	| kubectl apply -f - -n taask
 
+install/server/partner:
+	helm template $(serverpath)/ops/chart \
+	--set Tag=$(shell cat ./taask-server/.build/tag) --set HomeDir=$(HOME) --set Suffix="-partner" \
+	| linkerd inject --proxy-bind-timeout 30s - \
+	| kubectl apply -f - -n taask
+
 logs/server:
 	kubectl logs deployment/taask-server taask-server -n taask -f
 

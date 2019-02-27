@@ -36,12 +36,22 @@ func Bootstrap() (*brain.Manager, error) {
 		return nil, errors.Wrap(err, "failed to configureClientAuthManager")
 	}
 
-	partnerManager, err := configurePartnerManager(serverConfig.PartnerAuth)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to configureClientAuthManager")
-	}
+	var partnerManager *partner.Manager
 
-	go partnerManager.Run()
+	log.LogInfo(serverConfig.PartnerAuth.Type)
+	if serverConfig.PartnerAuth != nil {
+		partnerManager, err = configurePartnerManager(serverConfig.PartnerAuth)
+		if err != nil {
+			return nil, errors.Wrap(err, "failed to configureClientAuthManager")
+		} else if partnerManager == nil {
+			return nil, errors.Wrap(err, "failed to configureClientAuthManager, it was nil")
+		}
+
+		log.LogInfo("got here")
+		go partnerManager.Run()
+	} else {
+		log.LogInfo("partner manager not configured")
+	}
 
 	brain := brain.NewManager(storage.NewMemory(), runnerAuth, clientAuth, partnerManager)
 

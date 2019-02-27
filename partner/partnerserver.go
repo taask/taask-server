@@ -8,6 +8,8 @@ import (
 
 // RunWithServer is analagous to Start(), but using a gRPC server instead of a client
 func (m *Manager) RunWithServer(server PartnerService_StreamUpdatesServer) error {
+	log.LogInfo("PartnerManager RunWithServer")
+
 	if err := m.generateAndSendDataKeyToPartner(m.partner, server); err != nil {
 		return errors.Wrap(err, "PartnerManager failed to generateAndSendDataKeyToPartner")
 	}

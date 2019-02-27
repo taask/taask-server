@@ -17,13 +17,14 @@ import (
 // Run starts the partner manager
 func (m *Manager) Run() {
 	for {
-		if m.partner.HealthChecker != nil {
-			if m.partner.HealthChecker.IsHealthy {
-				if err := <-m.partner.HealthChecker.UnhealthyChan; err != nil {
-					log.LogError(errors.Wrap(err, "partner healthChecker reported unhealthy, will retry in 5s"))
-				}
-			}
-		}
+		log.LogInfo("PartnerManager Run")
+		// if m.partner.HealthChecker != nil {
+		// 	if m.partner.HealthChecker.IsHealthy {
+		// 		if err := <-m.partner.HealthChecker.UnhealthyChan; err != nil {
+		// 			log.LogError(errors.Wrap(err, "partner healthChecker reported unhealthy, will retry in 5s"))
+		// 		}
+		// 	}
+		// }
 
 		<-time.After(time.Duration(time.Second * 5))
 
@@ -84,10 +85,12 @@ func (m *Manager) streamClientRecvChan(partner *Partner, client PartnerService_S
 }
 
 func (p *Partner) initClient() error {
-	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", p.host, p.port), grpc.WithInsecure())
+	log.LogInfo("dialing")
+	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", p.host, p.port), grpc.WithInsecure(), grpc.WithTimeout(time.Second*1))
 	if err != nil {
 		return errors.Wrap(err, "failed to Dial")
 	}
+	log.LogInfo("done dialing")
 
 	client := NewPartnerServiceClient(conn)
 

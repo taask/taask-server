@@ -1,6 +1,7 @@
 package brain
 
 import (
+	"github.com/pkg/errors"
 	"github.com/taask/taask-server/auth"
 	"github.com/taask/taask-server/partner"
 )
@@ -36,6 +37,10 @@ func (m *Manager) AttemptPartnerAuth(attempt *auth.Attempt) (*auth.EncMemberSess
 	// we're doing it this way right now because we want AuthManager to be generalized,
 	// but this is a special case of needing to know the internals of auth
 
+	if m.PartnerManager == nil {
+		return nil, errors.New("server not configured for federation")
+	}
+
 	encMemberSession, err := m.PartnerManager.Auth.AttemptAuth(attempt)
 	if err != nil {
 		return nil, err
@@ -48,5 +53,9 @@ func (m *Manager) AttemptPartnerAuth(attempt *auth.Attempt) (*auth.EncMemberSess
 
 // CheckPartnerAuth checks partner auth
 func (m *Manager) CheckPartnerAuth(session *auth.Session) error {
+	if m.PartnerManager == nil {
+		return errors.New("server not configured for federation")
+	}
+
 	return m.PartnerManager.Auth.CheckAuth(session)
 }

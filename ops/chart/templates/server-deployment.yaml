@@ -1,7 +1,7 @@
 apiVersion: apps/v1beta2
 kind: Deployment
 metadata:
-  name: taask-server
+  name: taask-server{{ .Values.Suffix }}
   labels: &DeploymentLabels
     io.taask/component: taask-server
 spec:
