@@ -3,7 +3,6 @@ package brain
 import (
 	"github.com/pkg/errors"
 	"github.com/taask/taask-server/auth"
-	"github.com/taask/taask-server/partner"
 )
 
 // AttemptRunnerAuth allows a runner to auth
@@ -38,7 +37,7 @@ func (m *Manager) AttemptPartnerAuth(attempt *auth.Attempt) (*auth.EncMemberSess
 	// but this is a special case of needing to know the internals of auth
 
 	if m.PartnerManager == nil {
-		return nil, errors.New("server not configured for federation")
+		return nil, errors.New("server not configured for partnership")
 	}
 
 	encMemberSession, err := m.PartnerManager.Auth.AttemptAuth(attempt)
@@ -46,7 +45,7 @@ func (m *Manager) AttemptPartnerAuth(attempt *auth.Attempt) (*auth.EncMemberSess
 		return nil, err
 	}
 
-	m.PartnerManager.SetPartner(&partner.Partner{UUID: attempt.MemberUUID})
+	m.PartnerManager.SetPartnerUUID(attempt.MemberUUID)
 
 	return encMemberSession, nil
 }

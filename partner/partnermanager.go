@@ -3,15 +3,19 @@ package partner
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
 	"github.com/cohix/simplcrypto"
+	log "github.com/cohix/simplog"
 	"github.com/pkg/errors"
 	"github.com/taask/taask-server/auth"
 	"github.com/taask/taask-server/config"
 	"github.com/taask/taask-server/model"
 )
+
+const overridePartnerHostEnvKey = "TAASK_PARTNER_HOST"
 
 // Manager controls partner updating and health checking
 type Manager struct {
@@ -26,7 +30,8 @@ type Manager struct {
 	masterKeypair *simplcrypto.KeyPair
 
 	// the partner we are syncing with
-	partner *Partner
+	partner     *Partner
+	partnerLock *sync.Mutex
 
 	// the auth info for the partner cluster
 	config *config.ClientAuthConfig
@@ -69,8 +74,14 @@ func NewManager(config *config.ClientAuthConfig, masterKeypair *simplcrypto.KeyP
 		return nil, nil
 	}
 
+	host := config.Service.Host
+	if envHost, useEnv := os.LookupEnv(overridePartnerHostEnvKey); useEnv && envHost != "" {
+		host = envHost
+		log.LogInfo(fmt.Sprintf("overriding partner host from env: %s", host))
+	}
+
 	partner := &Partner{
-		host:       config.Service.Host,
+		host:       host,
 		port:       config.Service.Port,
 		updateLock: &sync.Mutex{},
 	}
@@ -97,6 +108,7 @@ func NewManager(config *config.ClientAuthConfig, masterKeypair *simplcrypto.KeyP
 	manager := &Manager{
 		UUID:          uuid,
 		partner:       partner,
+		partnerLock:   &sync.Mutex{},
 		config:        config,
 		Auth:          authMan,
 		masterKeypair: masterKeypair,
@@ -145,17 +157,21 @@ func (p *Partner) lockUnlock() func() {
 }
 
 func (m *Manager) decryptAndVerifyUpdateFromPartner(partner *Partner, updateReq *UpdateRequest) (*Update, error) {
-	if partner.DataKey == nil {
-		return nil, errors.New("missing data key for partner")
+	if updateReq.IsHealthCheck {
+		return nil, nil
 	}
 
-	if updateReq.UpdateSignature == nil {
-		return nil, errors.New("update request from partner missing signature")
+	if partner.DataKey == nil {
+		return nil, errors.New("missing data key for partner")
 	}
 
 	updateJSON, err := partner.DataKey.Decrypt(updateReq.EncUpdate)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to Decrypt update from partner")
+	}
+
+	if updateReq.UpdateSignature == nil {
+		return nil, errors.New("update request from partner missing signature")
 	}
 
 	if partner.ActiveSession != nil {
@@ -178,7 +194,15 @@ func (m *Manager) decryptAndVerifyUpdateFromPartner(partner *Partner, updateReq 
 	return &update, nil
 }
 
-// SetPartner allows the brain to set our partner (TODO: figure out if this is gross and if it will bite us later)
-func (m *Manager) SetPartner(partner *Partner) {
-	m.partner = partner
+// SetPartnerUUID allows the brain to set our partner's uuid
+func (m *Manager) SetPartnerUUID(uuid string) {
+	m.partner.UUID = uuid
 }
+
+// func (m *Manager) lockUnlockPartner() func() {
+// 	m.partnerLock.Lock()
+
+// 	return func() {
+// 		m.partnerLock.Unlock()
+// 	}
+// }

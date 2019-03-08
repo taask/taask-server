@@ -38,17 +38,16 @@ func Bootstrap() (*brain.Manager, error) {
 
 	var partnerManager *partner.Manager
 
-	log.LogInfo(serverConfig.PartnerAuth.Type)
 	if serverConfig.PartnerAuth != nil {
 		partnerManager, err = configurePartnerManager(serverConfig.PartnerAuth)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to configureClientAuthManager")
+			return nil, errors.Wrap(err, "failed to configurePartnerManager")
 		} else if partnerManager == nil {
-			return nil, errors.Wrap(err, "failed to configureClientAuthManager, it was nil")
+			return nil, errors.Wrap(err, "failed to configurePartnerManager, it was nil")
 		}
 
-		log.LogInfo("got here")
-		go partnerManager.Run()
+		go partnerManager.StartOutgoingManager()
+
 	} else {
 		log.LogInfo("partner manager not configured")
 	}

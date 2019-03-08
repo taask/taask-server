@@ -10,6 +10,13 @@ import (
 func (m *Manager) RunWithServer(server PartnerService_StreamUpdatesServer) error {
 	log.LogInfo("PartnerManager RunWithServer")
 
+	log.LogInfo("waiting for session validation from partner")
+	if err := m.receiveAndCheckSessionFromPartner(server); err != nil {
+		return errors.Wrap(err, "PartnerManager failed to receiveAndCheckSessionFromPartner")
+	}
+
+	log.LogInfo("partner session validated")
+	log.LogInfo("sending data key to partner")
 	if err := m.generateAndSendDataKeyToPartner(m.partner, server); err != nil {
 		return errors.Wrap(err, "PartnerManager failed to generateAndSendDataKeyToPartner")
 	}
@@ -17,11 +24,14 @@ func (m *Manager) RunWithServer(server PartnerService_StreamUpdatesServer) error
 	recvChan := m.streamServerRecvChan(m.partner, server)
 
 	m.partner.HealthChecker = newHealthChecker()
-	m.partner.HealthChecker.startHealthCheckingWithServer(server)
+	go m.partner.HealthChecker.startHealthCheckingWithServer(server)
 
+	log.LogInfo("update stream starting")
 	return m.streamUpdates(recvChan, m.partner.HealthChecker.UnhealthyChan)
 }
 
+// streamServerRecvChan creates a channel to send updates over, and then spawns a goroutine to
+// constantly receive from the update server, decrypt the updates, and send them down the chan
 func (m *Manager) streamServerRecvChan(partner *Partner, server PartnerService_StreamUpdatesServer) chan *Update {
 	recvChan := make(chan *Update)
 
@@ -37,6 +47,9 @@ func (m *Manager) streamServerRecvChan(partner *Partner, server PartnerService_S
 			if err != nil {
 				log.LogWarn(errors.Wrap(err, "failed to decryptAndVerifyUpdateFromPartner").Error())
 				continue
+			} else if update == nil {
+				log.LogInfo("received health check, discarding...")
+				continue
 			}
 
 			recvChan <- update
@@ -44,6 +57,19 @@ func (m *Manager) streamServerRecvChan(partner *Partner, server PartnerService_S
 	}(server, recvChan)
 
 	return recvChan
+}
+
+func (m *Manager) receiveAndCheckSessionFromPartner(server PartnerService_StreamUpdatesServer) error {
+	updateReq, err := server.Recv()
+	if err != nil {
+		return errors.Wrap(err, "failed to Recv data key update")
+	}
+
+	if updateReq.Session == nil {
+		return errors.New("session check session missing")
+	}
+
+	return m.Auth.CheckAuth(updateReq.Session)
 }
 
 func (m *Manager) generateAndSendDataKeyToPartner(partner *Partner, server PartnerService_StreamUpdatesServer) error {
