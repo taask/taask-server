@@ -43,14 +43,17 @@ type PartnerService struct {
 func (ps *PartnerService) AuthPartner(ctx context.Context, attempt *auth.Attempt) (*auth.AttemptResponse, error) {
 	defer log.LogTrace("AuthPartner")()
 
-	encPartnerChallenge, err := ps.Manager.AttemptRunnerAuth(attempt)
+	log.LogInfo("received partner auth request")
+	encPartnerChallenge, err := ps.Manager.AttemptPartnerAuth(attempt)
 	if err != nil {
+		log.LogWarn(errors.Wrap(err, "partner auth request denied").Error())
 		return nil, err
 	}
 
+	log.LogInfo("partner auth request accepted")
 	resp := &auth.AttemptResponse{
 		EncChallenge: encPartnerChallenge.EncSessionChallenge,
-		MasterPubKey: ps.Manager.GetMasterRunnerPubKey(),
+		MasterPubKey: ps.Manager.GetMasterPartnerPubKey(),
 	}
 
 	return resp, nil
@@ -58,7 +61,7 @@ func (ps *PartnerService) AuthPartner(ctx context.Context, attempt *auth.Attempt
 
 // StreamUpdates enables sync between partners
 func (ps *PartnerService) StreamUpdates(stream partner.PartnerService_StreamUpdatesServer) error {
-	if err := ps.Manager.PartnerManager.RunWithServer(stream); err != nil {
+	if err := ps.Manager.RunPartnerManagerWithServer(stream); err != nil {
 		return errors.Wrap(err, "StreamUpdates failed to StartWithServer")
 	}
 

@@ -34,16 +34,16 @@ func NewManager(storage storage.Manager, metrics *metrics.Manager) *Manager {
 }
 
 // UpdateTask updates a task in storage and notifies listeners of the new status
-func (m *Manager) UpdateTask(update model.TaskUpdate) {
+func (m *Manager) UpdateTask(update model.TaskUpdate) *model.Task {
 	if update.UUID == "" {
 		log.LogError(errors.New("attempted to update task without providing UUID"))
-		return
+		return nil
 	}
 
 	task, err := m.storage.Get(update.UUID)
 	if err != nil {
 		log.LogError(errors.Wrap(err, "failed to storage.Get"))
-		return
+		return nil
 	}
 
 	go m.metrics.UpdateTask(*task, update)
@@ -57,6 +57,8 @@ func (m *Manager) UpdateTask(update model.TaskUpdate) {
 	}
 
 	m.updateListeners(task)
+
+	return task
 }
 
 // GetListener gets a channel to listen to task updates, immediately updates the listener with the current state

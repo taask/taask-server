@@ -85,7 +85,7 @@ func (ts TaskService) CheckTask(req *CheckTaskRequest, stream TaskService_CheckT
 
 	status := ""
 
-	listener := ts.Manager.Updater.GetListener(req.UUID)
+	listener := ts.Manager.GetTaskUpdateListener(req.UUID)
 
 	for {
 		// only send the update if the status has changed

@@ -11,13 +11,14 @@ type healthChecker struct {
 
 func newHealthChecker() *healthChecker {
 	return &healthChecker{
+		IsHealthy:     true,
 		UnhealthyChan: make(chan error),
 	}
 }
 
 func (hc *healthChecker) startHealthCheckingWithClient(stream PartnerService_StreamUpdatesClient) {
 	for {
-		<-time.After(time.Duration(time.Second * 30))
+		<-time.After(time.Duration(time.Second * 20))
 
 		if err := stream.Send(&UpdateRequest{IsHealthCheck: true}); err != nil {
 			hc.IsHealthy = false
@@ -36,9 +37,6 @@ func (hc *healthChecker) startHealthCheckingWithServer(stream PartnerService_Str
 		if err := stream.Send(&UpdateRequest{IsHealthCheck: true}); err != nil {
 			hc.IsHealthy = false
 			hc.UnhealthyChan <- err
-
-			// TODO: make this less fragile
-			hc.UnhealthyChan <- err // do it twice so that the streamUpdates loop and the waiting Run() loop knows
 			break
 		}
 

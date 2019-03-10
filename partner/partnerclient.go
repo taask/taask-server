@@ -5,93 +5,163 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/cohix/simplcrypto"
 	log "github.com/cohix/simplog"
 	"github.com/pkg/errors"
 	"github.com/taask/taask-server/auth"
+	"github.com/taask/taask-server/timeout"
+	"github.com/taask/taask-server/update"
 	"google.golang.org/grpc"
 )
 
-// Run starts the partner manager
-func (m *Manager) Run() {
+// StartOutgoingManager continually tries to connect as the outgoing partner
+func (m *Manager) StartOutgoingManager() {
+	retry := 5
+
 	for {
-		if m.partner.HealthChecker != nil {
-			if m.partner.HealthChecker.IsHealthy {
-				if err := <-m.partner.HealthChecker.UnhealthyChan; err != nil {
-					log.LogError(errors.Wrap(err, "partner healthChecker reported unhealthy, will retry in 5s"))
-				}
-			}
-		}
+		// this loop ensures that we always reach out as the outgoing partner whenever needed
+		err := m.Run()
 
-		<-time.After(time.Duration(time.Second * 5))
-
-		if err := m.partner.initClient(); err != nil {
-			log.LogWarn(errors.Wrap(err, "PartnerManager failed to initClient, will retry in 5s").Error())
-			continue
-		}
-
-		if err := m.authenticatePartner(m.partner); err != nil {
-			log.LogWarn(errors.Wrap(err, "PartnerManager failed to authenticatePartner, will retry in 5s").Error())
-			continue
-		}
-
-		client, err := m.partner.Client.StreamUpdates(context.Background(), nil)
 		if err != nil {
-			log.LogWarn(errors.Wrap(err, "PartnerManager failed to StreamUpdates, will retry in 5s").Error())
-			continue
+			log.LogWarn(err.Error())
+		} else {
+			log.LogInfo("startOutgoingPartnerManager retrying...")
 		}
 
-		if err := m.receiveDataKeyFromPartner(m.partner, client); err != nil {
-			log.LogWarn(errors.Wrap(err, "PartnerManager failed to receiveDataKeyFromPartner, will retry in 5s").Error())
-			continue
-		}
-
-		recvChan := m.streamClientRecvChan(m.partner, client)
-
-		m.partner.HealthChecker = newHealthChecker()
-		m.partner.HealthChecker.startHealthCheckingWithClient(client)
-
-		if err := m.streamUpdates(recvChan, m.partner.HealthChecker.UnhealthyChan); err != nil {
-			log.LogWarn(errors.Wrap(err, "PartnerManager encountered streamUpdatesError, will retry in 5s").Error())
-		}
+		<-time.After(time.Duration(time.Second * time.Duration(retry)))
+		retry *= 2
 	}
 }
 
-func (m *Manager) streamClientRecvChan(partner *Partner, client PartnerService_StreamUpdatesClient) chan *Update {
-	recvChan := make(chan *Update)
+// Run starts the partner manager
+func (m *Manager) Run() error {
+	log.LogInfo("PartnerManager Run")
+	// defer m.lockUnlockPartner()
 
-	go func(client PartnerService_StreamUpdatesClient, recvChan chan *Update) {
-		for {
-			updateReq, err := client.Recv()
-			if err != nil {
-				log.LogWarn(errors.Wrap(err, "streamClientRecvChan failed to Recv, terminating partner stream...").Error())
-				break
-			}
-
-			update, err := m.decryptAndVerifyUpdateFromPartner(partner, updateReq)
-			if err != nil {
-				log.LogWarn(errors.Wrap(err, "failed to decryptAndVerifyUpdateFromPartner").Error())
-				continue
-			}
-
-			recvChan <- update
+	if m.partner == nil {
+		partner := &Partner{
+			Update:     update.NewPartnerUpdate(),
+			host:       m.config.Service.Host,
+			port:       m.config.Service.Port,
+			updateLock: &sync.Mutex{},
 		}
-	}(client, recvChan)
 
-	return recvChan
+		m.partner = partner
+	}
+
+	if m.partner.HealthChecker != nil {
+		if m.partner.HealthChecker.IsHealthy {
+			log.LogInfo("partner healthChecker is healthy")
+			return nil
+		}
+
+		log.LogInfo("partner healthChecker is unhealthy, attempting to connect to partner")
+	} else {
+		log.LogInfo("partner healthChecker doesn't exist, attempting to connect to partner")
+	}
+
+	if err := m.initPartnerClient(m.partner); err != nil {
+		return errors.Wrap(err, "PartnerManager failed to initClient, will retry")
+	}
+
+	if err := m.authenticatePartner(m.partner); err != nil {
+		return errors.Wrap(err, "PartnerManager failed to authenticatePartner, will retry")
+	}
+
+	log.LogInfo("authenticated with partner, starting update stream")
+
+	var client PartnerService_StreamUpdatesClient
+
+	if m.partner.Client != nil {
+		var err error
+		client, err = m.partner.Client.StreamUpdates(context.Background())
+		if err != nil {
+			return errors.Wrap(err, "PartnerManager failed to StreamUpdates, will retry in 5s")
+		}
+	} else {
+		log.LogInfo("m.partner.Client doesn't exist, aborting...")
+		return nil
+	}
+
+	log.LogInfo("sending session to partner")
+	if err := m.sendSessionToPartner(client); err != nil {
+		return errors.Wrap(err, "PartnerManager failed to sendSessionTopartner")
+	}
+
+	m.partner.HealthChecker = newHealthChecker()
+	go m.partner.HealthChecker.startHealthCheckingWithClient(client)
+
+	log.LogInfo("waiting for partner data key")
+	if err := m.receiveDataKeyFromPartner(m.partner, client); err != nil {
+		return errors.Wrap(err, "PartnerManager failed to receiveDataKeyFromPartner, will retry in 5s")
+	}
+
+	log.LogInfo("received data key from partner")
+	sendChan, recvChan := m.clientSendRecvChans(m.partner, client)
+
+	log.LogInfo("update stream starting")
+	if err := m.streamUpdates(sendChan, recvChan, m.partner.HealthChecker.UnhealthyChan); err != nil {
+		return errors.Wrap(err, "PartnerManager encountered streamUpdates error, will retry")
+	}
+
+	return nil
 }
 
-func (p *Partner) initClient() error {
-	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", p.host, p.port), grpc.WithInsecure())
+// clientSendRecvChans creates channels to send and receive from the partner, and continuously reads and writes
+func (m *Manager) clientSendRecvChans(partner *Partner, client PartnerService_StreamUpdatesClient) (chan update.PartnerUpdate, chan update.PartnerUpdate) {
+	sendChan := make(chan update.PartnerUpdate)
+	recvChan := make(chan update.PartnerUpdate)
+
+	go func(client PartnerService_StreamUpdatesClient, sendChan chan update.PartnerUpdate, recvChan chan update.PartnerUpdate) {
+		for {
+			select {
+			case update := <-sendChan:
+				updateReq, err := m.encryptAndSignUpdateForPartner(partner, &update)
+				if err != nil {
+					log.LogWarn(errors.Wrap(err, "clientSendRecvChans failed to encryptAndSignUpdateForPartner").Error())
+					continue
+				}
+
+				if err := client.Send(updateReq); err != nil {
+					log.LogWarn(errors.Wrap(err, "streamClientRecvChan failed to Recv, terminating partner stream...").Error())
+					break
+				}
+			default:
+				updateReq, err := client.Recv()
+				if err != nil {
+					log.LogWarn(errors.Wrap(err, "streamClientRecvChan failed to Recv, terminating partner stream...").Error())
+					break
+				}
+
+				update, err := m.decryptAndVerifyUpdateFromPartner(partner, updateReq)
+				if err != nil {
+					log.LogWarn(errors.Wrap(err, "failed to decryptAndVerifyUpdateFromPartner").Error())
+					continue
+				} else if update == nil {
+					log.LogInfo("received health check, discarding...")
+					continue
+				}
+
+				recvChan <- *update
+			}
+		}
+	}(client, sendChan, recvChan)
+
+	return sendChan, recvChan
+}
+
+func (m *Manager) initPartnerClient(partner *Partner) error {
+	conn, err := grpc.Dial(fmt.Sprintf("%s:%s", partner.host, partner.port), grpc.WithInsecure())
 	if err != nil {
 		return errors.Wrap(err, "failed to Dial")
 	}
 
 	client := NewPartnerServiceClient(conn)
 
-	p.Client = client
+	partner.Client = client
 
 	return nil
 }
@@ -121,11 +191,13 @@ func (m *Manager) authenticatePartner(partner *Partner) error {
 		Timestamp:         timestamp,
 	}
 
-	authResp, err := m.partner.Client.AuthPartner(context.Background(), attempt)
+	log.LogInfo("sending partner auth attempt")
+	authResp, err := partner.Client.AuthPartner(timeout.AuthContext(), attempt)
 	if err != nil {
-		return errors.Wrap(err, "failed to AuthClient")
+		return errors.Wrap(err, "failed to AuthPartner")
 	}
 
+	log.LogInfo("partner auth attempt succeeded")
 	challengeBytes, err := keypair.Decrypt(authResp.EncChallenge)
 	if err != nil {
 		return errors.Wrap(err, "failed to Decrypt challenge")
@@ -151,9 +223,17 @@ func (m *Manager) authenticatePartner(partner *Partner) error {
 		MasterPubKey: masterRunnerPubKey,
 	}
 
-	m.partner.ActiveSession = session
+	partner.ActiveSession = session
 
 	return nil
+}
+
+func (m *Manager) sendSessionToPartner(client PartnerService_StreamUpdatesClient) error {
+	updateReq := &UpdateRequest{
+		Session: m.partner.ActiveSession.Session,
+	}
+
+	return client.Send(updateReq)
 }
 
 func (m *Manager) receiveDataKeyFromPartner(partner *Partner, client PartnerService_StreamUpdatesClient) error {

@@ -1,9 +1,9 @@
 apiVersion: apps/v1beta2
 kind: Deployment
 metadata:
-  name: taask-server
+  name: taask-server{{ .Values.Suffix }}
   labels: &DeploymentLabels
-    io.taask/component: taask-server
+    io.taask/component: taask-server{{ .Values.Suffix }}
 spec:
   selector:
     matchLabels: *DeploymentLabels
@@ -29,6 +29,9 @@ spec:
         volumeMounts:
         - mountPath: /root/.taask/server/config
           name: taask-config
+        env:
+        - name: "TAASK_PARTNER_HOST"
+          value: {{ .Values.PartnerHost }}
       volumes:
       - name: taask-config
         hostPath:
@@ -41,12 +44,12 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: taask-server
+  name: taask-server{{ .Values.Suffix }}
   labels:
-    io.taask/service: taask-server
+    io.taask/service: taask-server{{ .Values.Suffix }}
 spec:
   selector:
-      io.taask/component: taask-server
+      io.taask/component: taask-server{{ .Values.Suffix }}
   ports:
   - name: runner
     port: 3687
@@ -75,4 +78,5 @@ spec:
   #   nodePort: 30600
   selector:
     io.taask/component: taask-server
+    io.taask/component: taask-server{{ .Values.Suffix }}
   type: NodePort

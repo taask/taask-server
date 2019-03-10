@@ -33,6 +33,7 @@ func run() {
 
 	go service.StartRunnerService(brain, errChan)
 	go service.StartTaskService(brain, errChan)
+	go service.StartPartnerService(brain, errChan)
 
 	// runtime.SetMutexProfileFraction(2)
 	// runtime.SetBlockProfileRate(2)
