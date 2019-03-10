@@ -31,7 +31,7 @@ func NewPartnerUpdate() *PartnerUpdate {
 
 // AddTask adds a task to be updated
 func (u *PartnerUpdate) AddTask(task model.Task) {
-	defer u.lockUnlock()
+	defer u.lockUnlock()()
 
 	for i, t := range u.Tasks {
 		if t.UUID == task.UUID {
@@ -45,14 +45,14 @@ func (u *PartnerUpdate) AddTask(task model.Task) {
 
 // AddGroup adds a member group to be updated
 func (u *PartnerUpdate) AddGroup(group auth.MemberGroup) {
-	defer u.lockUnlock()
+	defer u.lockUnlock()()
 
 	u.Groups = append(u.Groups, group)
 }
 
 // AddSession adds a member session to be synced
 func (u *PartnerUpdate) AddSession(session auth.MemberAuth) {
-	defer u.lockUnlock()
+	defer u.lockUnlock()()
 
 	u.Sessions = append(u.Sessions, session)
 }

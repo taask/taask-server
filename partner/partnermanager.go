@@ -122,7 +122,7 @@ func (m *Manager) HealthyPartnerUUID() string {
 	return ""
 }
 
-func (m *Manager) streamUpdates(sendChan, recvChan chan update.PartnerUpdate, unhealthyChan chan error) error {
+func (m *Manager) handleUpdates(sendChan, recvChan chan update.PartnerUpdate, unhealthyChan chan error) error {
 	// the inner loop does partner sync (flushes the queued updates, receives updates)
 	timeChan := make(chan bool, 1)
 	timeChan <- true
@@ -135,7 +135,7 @@ func (m *Manager) streamUpdates(sendChan, recvChan chan update.PartnerUpdate, un
 			// TODO: determine if flushupdates should be allowed to set the next time or not
 			go m.flushUpdates(sendChan, timeChan)
 		case err := <-unhealthyChan:
-			return errors.Wrap(err, "PartnerManager detects unhealthy partner, terminating update stream")
+			return errors.Wrap(err, "handleUpdates detected unhealthy partner, terminating update handler")
 		}
 	}
 }
@@ -148,16 +148,7 @@ func (m *Manager) applyUpdate(update update.PartnerUpdate) {
 }
 
 func (m *Manager) flushUpdates(sendChan chan update.PartnerUpdate, timeChan chan bool) {
-	// determine if we even have a partner to work with here
-	if m.partner.HealthChecker != nil {
-		if !m.partner.HealthChecker.IsHealthy {
-			return
-		}
-	} else {
-		return
-	}
-
-	defer m.partner.lockUnlockUpdate()
+	defer m.partner.lockUnlockUpdate()()
 	log.LogInfo("flushing updates to partner")
 
 	updateToSend := *m.partner.Update

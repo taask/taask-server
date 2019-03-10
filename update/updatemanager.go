@@ -50,10 +50,12 @@ func (m *Manager) UpdateTask(update model.TaskUpdate) *model.Task {
 
 	if err := task.ApplyUpdate(update, true); err != nil {
 		log.LogWarn(errors.Wrap(err, "update.Manager failed to ApplyUpdate").Error())
+		return nil
 	}
 
 	if err := m.storage.Update(*task); err != nil {
 		log.LogError(errors.Wrap(err, "failed to m.storage.Update"))
+		return nil
 	}
 
 	m.updateListeners(task)

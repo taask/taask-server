@@ -38,9 +38,6 @@ func (m *Manager) StartOutgoingManager() {
 
 // Run starts the partner manager
 func (m *Manager) Run() error {
-	log.LogInfo("PartnerManager Run")
-	// defer m.lockUnlockPartner()
-
 	if m.partner == nil {
 		partner := &Partner{
 			Update:     update.NewPartnerUpdate(),
@@ -91,66 +88,14 @@ func (m *Manager) Run() error {
 		return errors.Wrap(err, "PartnerManager failed to sendSessionTopartner")
 	}
 
-	m.partner.HealthChecker = newHealthChecker()
-	go m.partner.HealthChecker.startHealthCheckingWithClient(client)
-
+	log.LogInfo("session validated")
 	log.LogInfo("waiting for partner data key")
 	if err := m.receiveDataKeyFromPartner(m.partner, client); err != nil {
 		return errors.Wrap(err, "PartnerManager failed to receiveDataKeyFromPartner, will retry in 5s")
 	}
 
 	log.LogInfo("received data key from partner")
-	sendChan, recvChan := m.clientSendRecvChans(m.partner, client)
-
-	log.LogInfo("update stream starting")
-	if err := m.streamUpdates(sendChan, recvChan, m.partner.HealthChecker.UnhealthyChan); err != nil {
-		return errors.Wrap(err, "PartnerManager encountered streamUpdates error, will retry")
-	}
-
-	return nil
-}
-
-// clientSendRecvChans creates channels to send and receive from the partner, and continuously reads and writes
-func (m *Manager) clientSendRecvChans(partner *Partner, client PartnerService_StreamUpdatesClient) (chan update.PartnerUpdate, chan update.PartnerUpdate) {
-	sendChan := make(chan update.PartnerUpdate)
-	recvChan := make(chan update.PartnerUpdate)
-
-	go func(client PartnerService_StreamUpdatesClient, sendChan chan update.PartnerUpdate, recvChan chan update.PartnerUpdate) {
-		for {
-			select {
-			case update := <-sendChan:
-				updateReq, err := m.encryptAndSignUpdateForPartner(partner, &update)
-				if err != nil {
-					log.LogWarn(errors.Wrap(err, "clientSendRecvChans failed to encryptAndSignUpdateForPartner").Error())
-					continue
-				}
-
-				if err := client.Send(updateReq); err != nil {
-					log.LogWarn(errors.Wrap(err, "streamClientRecvChan failed to Recv, terminating partner stream...").Error())
-					break
-				}
-			default:
-				updateReq, err := client.Recv()
-				if err != nil {
-					log.LogWarn(errors.Wrap(err, "streamClientRecvChan failed to Recv, terminating partner stream...").Error())
-					break
-				}
-
-				update, err := m.decryptAndVerifyUpdateFromPartner(partner, updateReq)
-				if err != nil {
-					log.LogWarn(errors.Wrap(err, "failed to decryptAndVerifyUpdateFromPartner").Error())
-					continue
-				} else if update == nil {
-					log.LogInfo("received health check, discarding...")
-					continue
-				}
-
-				recvChan <- *update
-			}
-		}
-	}(client, sendChan, recvChan)
-
-	return sendChan, recvChan
+	return m.syncWithPartner(m.partner, client)
 }
 
 func (m *Manager) initPartnerClient(partner *Partner) error {
