@@ -1,6 +1,7 @@
 package brain
 
 import (
+	"fmt"
 	"math/rand"
 
 	"github.com/pkg/errors"
@@ -32,6 +33,8 @@ func (m *Manager) ScheduleTask(task *model.Task) (string, error) {
 	} else {
 		task.Meta.PartnerUUID = m.partnerManager.UUID
 	}
+
+	fmt.Println(fmt.Sprintf("adding task with PartnerUUID %s, mine is %s", task.Meta.PartnerUUID, m.partnerManager.UUID))
 
 	if err := m.storage.Add(*task); err != nil {
 		return "", errors.Wrap(err, "failed to storage.Add")
@@ -67,7 +70,7 @@ func (m *Manager) UpdateTask(update model.TaskUpdate) error {
 	task := m.updater.UpdateTask(update)
 
 	if task != nil {
-		m.partnerManager.AddTaskForUpdate(*task)
+		go m.partnerManager.AddTaskForUpdate(*task)
 	}
 
 	return nil

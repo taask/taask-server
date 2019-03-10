@@ -9,7 +9,7 @@ import (
 
 // AddTaskForUpdate adds a task to be synced to partners
 func (m *Manager) AddTaskForUpdate(task model.Task) {
-	defer m.partner.lockUnlockUpdate()
+	defer m.partner.lockUnlockUpdate()()
 
 	m.partner.Update.AddTask(task)
 
