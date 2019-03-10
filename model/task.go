@@ -11,6 +11,9 @@ import (
 
 // TaskStatusWaiting and others represent the status of a task
 const (
+	// the task has been recieved, but the client does not want it to be scheduled yet.
+	TaskStatusPending = "pending"
+
 	// task is waiting when it has been received but not yet scheduled to a runner
 	// waiting tasks will be queued at the first available opportunity
 	TaskStatusWaiting = "waiting"
@@ -94,6 +97,11 @@ func (t *Task) ApplyUpdate(update TaskUpdate, logIt bool) error {
 	return nil
 }
 
+// IsPending is if a task is in pending state
+func (t *Task) IsPending() bool {
+	return t.Status == TaskStatusPending
+}
+
 // IsNotStarted is if a task hasn't even tried to run yet (hasn't been assigned a runner)
 func (t *Task) IsNotStarted() bool {
 	return t.Status == TaskStatusWaiting || t.Status == TaskStatusRetrying
@@ -117,6 +125,10 @@ func (t *Task) IsFinished() bool {
 // CanTransitionToState returns true if a task can go from its current state to new
 func (t *Task) CanTransitionToState(new string) bool {
 	if t.Status == "" {
+		return new == TaskStatusWaiting
+	}
+
+	if t.Status == TaskStatusPending {
 		return new == TaskStatusWaiting
 	}
 

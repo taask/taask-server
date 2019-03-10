@@ -13,6 +13,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/taask/taask-server/auth"
 	"github.com/taask/taask-server/timeout"
+	"github.com/taask/taask-server/update"
 	"google.golang.org/grpc"
 )
 
@@ -42,6 +43,7 @@ func (m *Manager) Run() error {
 
 	if m.partner == nil {
 		partner := &Partner{
+			Update:     update.NewPartnerUpdate(),
 			host:       m.config.Service.Host,
 			port:       m.config.Service.Port,
 			updateLock: &sync.Mutex{},
@@ -98,41 +100,57 @@ func (m *Manager) Run() error {
 	}
 
 	log.LogInfo("received data key from partner")
-	recvChan := m.streamClientRecvChan(m.partner, client)
+	sendChan, recvChan := m.clientSendRecvChans(m.partner, client)
 
 	log.LogInfo("update stream starting")
-	if err := m.streamUpdates(recvChan, m.partner.HealthChecker.UnhealthyChan); err != nil {
+	if err := m.streamUpdates(sendChan, recvChan, m.partner.HealthChecker.UnhealthyChan); err != nil {
 		return errors.Wrap(err, "PartnerManager encountered streamUpdates error, will retry")
 	}
 
 	return nil
 }
 
-func (m *Manager) streamClientRecvChan(partner *Partner, client PartnerService_StreamUpdatesClient) chan *Update {
-	recvChan := make(chan *Update)
+// clientSendRecvChans creates channels to send and receive from the partner, and continuously reads and writes
+func (m *Manager) clientSendRecvChans(partner *Partner, client PartnerService_StreamUpdatesClient) (chan update.PartnerUpdate, chan update.PartnerUpdate) {
+	sendChan := make(chan update.PartnerUpdate)
+	recvChan := make(chan update.PartnerUpdate)
 
-	go func(client PartnerService_StreamUpdatesClient, recvChan chan *Update) {
+	go func(client PartnerService_StreamUpdatesClient, sendChan chan update.PartnerUpdate, recvChan chan update.PartnerUpdate) {
 		for {
-			updateReq, err := client.Recv()
-			if err != nil {
-				log.LogWarn(errors.Wrap(err, "streamClientRecvChan failed to Recv, terminating partner stream...").Error())
-				break
-			}
+			select {
+			case update := <-sendChan:
+				updateReq, err := m.encryptAndSignUpdateForPartner(partner, &update)
+				if err != nil {
+					log.LogWarn(errors.Wrap(err, "clientSendRecvChans failed to encryptAndSignUpdateForPartner").Error())
+					continue
+				}
 
-			update, err := m.decryptAndVerifyUpdateFromPartner(partner, updateReq)
-			if err != nil {
-				log.LogWarn(errors.Wrap(err, "failed to decryptAndVerifyUpdateFromPartner").Error())
-				continue
-			} else if update == nil {
-				log.LogInfo("received health check, discarding...")
-				continue
-			}
+				if err := client.Send(updateReq); err != nil {
+					log.LogWarn(errors.Wrap(err, "streamClientRecvChan failed to Recv, terminating partner stream...").Error())
+					break
+				}
+			default:
+				updateReq, err := client.Recv()
+				if err != nil {
+					log.LogWarn(errors.Wrap(err, "streamClientRecvChan failed to Recv, terminating partner stream...").Error())
+					break
+				}
 
-			recvChan <- update
+				update, err := m.decryptAndVerifyUpdateFromPartner(partner, updateReq)
+				if err != nil {
+					log.LogWarn(errors.Wrap(err, "failed to decryptAndVerifyUpdateFromPartner").Error())
+					continue
+				} else if update == nil {
+					log.LogInfo("received health check, discarding...")
+					continue
+				}
+
+				recvChan <- *update
+			}
 		}
-	}(client, recvChan)
+	}(client, sendChan, recvChan)
 
-	return recvChan
+	return sendChan, recvChan
 }
 
 func (m *Manager) initPartnerClient(partner *Partner) error {

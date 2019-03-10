@@ -54,6 +54,10 @@ func Bootstrap() (*brain.Manager, error) {
 
 	brain := brain.NewManager(storage.NewMemory(), runnerAuth, clientAuth, partnerManager)
 
+	if partnerManager != nil {
+		partnerManager.SetApplyUpdateFunc(brain.PartnerUpdateFunc())
+	}
+
 	go startMetricsServer(brain)
 
 	return brain, nil

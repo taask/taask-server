@@ -17,7 +17,7 @@ message Task {
 message TaskMeta {
 	repeated string Annotations = 1;
 	string RunnerUUID = 2;
-	string ChildRunnerUUID = 3;
+	string PartnerUUID = 3;
 	simpl.crypto.Message MasterEncTaskKey = 4; // the task key encrypted by the master runner pubkey
 	simpl.crypto.Message RunnerEncTaskKey = 5; // the task key encrypted by the assigned runner's pubkey
 	simpl.crypto.Message ClientEncTaskKey = 6; // the task key encrypted by the client keypair

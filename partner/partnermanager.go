@@ -13,6 +13,7 @@ import (
 	"github.com/taask/taask-server/auth"
 	"github.com/taask/taask-server/config"
 	"github.com/taask/taask-server/model"
+	"github.com/taask/taask-server/update"
 )
 
 const overridePartnerHostEnvKey = "TAASK_PARTNER_HOST"
@@ -37,29 +38,7 @@ type Manager struct {
 	config *config.ClientAuthConfig
 
 	// the apply func is provided by the brain as a "callback" for sending updates
-	applyUpdateFunc func(*Update)
-}
-
-// Partner describes a partner server
-type Partner struct {
-	UUID   string
-	Client PartnerServiceClient
-
-	host string
-	port string
-
-	// healthChecker maintains the health of the partner
-	HealthChecker *healthChecker
-
-	// The session that we (as the outgoing partner) hold for the incoming partner
-	ActiveSession *activeSession
-
-	// the sym key used to encrypt data between partners
-	DataKey *simplcrypto.SymKey
-
-	// the update that is being "buffered" for this partner
-	Update     *Update
-	updateLock *sync.Mutex
+	applyUpdateFunc func(update.PartnerUpdate)
 }
 
 type activeSession struct {
@@ -81,6 +60,7 @@ func NewManager(config *config.ClientAuthConfig, masterKeypair *simplcrypto.KeyP
 	}
 
 	partner := &Partner{
+		Update:     update.NewPartnerUpdate(),
 		host:       host,
 		port:       config.Service.Port,
 		updateLock: &sync.Mutex{},
@@ -94,11 +74,11 @@ func NewManager(config *config.ClientAuthConfig, masterKeypair *simplcrypto.KeyP
 	}
 
 	if config.MemberGroup.Name != "partner" {
-		return nil, fmt.Errorf("client auth config with group name %s not allowed", config.MemberGroup.Name)
+		return nil, fmt.Errorf("partner auth config with group name %s not allowed", config.MemberGroup.Name)
 	}
 
 	if config.MemberGroup.UUID != auth.PartnerGroupUUID {
-		return nil, fmt.Errorf("client auth config with group uuid %s not allowed", config.MemberGroup.UUID)
+		return nil, fmt.Errorf("partner auth config with group uuid %s not allowed", config.MemberGroup.UUID)
 	}
 
 	if err := authMan.AddGroup(&config.MemberGroup); err != nil {
@@ -117,9 +97,35 @@ func NewManager(config *config.ClientAuthConfig, masterKeypair *simplcrypto.KeyP
 	return manager, nil
 }
 
-func (m *Manager) streamUpdates(recvChan chan *Update, unhealthyChan chan error) error {
+// SetApplyUpdateFunc sets the applyUpdate callback func
+func (m *Manager) SetApplyUpdateFunc(applyFunc func(update.PartnerUpdate)) {
+	m.applyUpdateFunc = applyFunc
+}
+
+// SetPartnerUUID allows the brain to set our partner's uuid
+func (m *Manager) SetPartnerUUID(uuid string) {
+	m.partner.UUID = uuid
+}
+
+// HealthyPartnerUUID returns a UUID of a healthy partner
+func (m *Manager) HealthyPartnerUUID() string {
+	if m == nil {
+		return ""
+	}
+
+	if m.partner.HealthChecker != nil {
+		if m.partner.HealthChecker.IsHealthy {
+			return m.partner.UUID
+		}
+	}
+
+	return ""
+}
+
+func (m *Manager) streamUpdates(sendChan, recvChan chan update.PartnerUpdate, unhealthyChan chan error) error {
 	// the inner loop does partner sync (flushes the queued updates, receives updates)
-	timeChan := make(chan time.Time)
+	timeChan := make(chan bool, 1)
+	timeChan <- true
 
 	for {
 		select {
@@ -127,36 +133,49 @@ func (m *Manager) streamUpdates(recvChan chan *Update, unhealthyChan chan error)
 			go m.applyUpdate(update)
 		case <-timeChan:
 			// TODO: determine if flushupdates should be allowed to set the next time or not
-			go m.flushUpdates(timeChan)
+			go m.flushUpdates(sendChan, timeChan)
 		case err := <-unhealthyChan:
 			return errors.Wrap(err, "PartnerManager detects unhealthy partner, terminating update stream")
 		}
 	}
 }
 
-func (m *Manager) applyUpdate(update *Update) {
+func (m *Manager) applyUpdate(update update.PartnerUpdate) {
 	// TODO: determine if we should use a channel for this
+	log.LogInfo("applying update from partner")
+
 	m.applyUpdateFunc(update)
 }
 
-func (m *Manager) flushUpdates(timeChan chan time.Time) {
-
-	// timeChan <- time.After(time.Duration(time.Second * 5))
-}
-
-func (p *Partner) lockUnlock() func() {
-	if p.updateLock == nil {
-		p.updateLock = &sync.Mutex{} // TODO: this is an awful idea, right?
+func (m *Manager) flushUpdates(sendChan chan update.PartnerUpdate, timeChan chan bool) {
+	// determine if we even have a partner to work with here
+	if m.partner.HealthChecker != nil {
+		if !m.partner.HealthChecker.IsHealthy {
+			return
+		}
+	} else {
+		return
 	}
 
-	p.updateLock.Lock()
+	defer m.partner.lockUnlockUpdate()
+	log.LogInfo("flushing updates to partner")
 
-	return func() {
-		p.updateLock.Unlock()
+	updateToSend := *m.partner.Update
+
+	if len(updateToSend.Tasks) == 0 && len(updateToSend.Groups) == 0 && len(updateToSend.Sessions) == 0 {
+		log.LogInfo("no updates queued for partner")
+	} else {
+		sendChan <- updateToSend
+
+		m.partner.Update = update.NewPartnerUpdate()
 	}
+
+	<-time.After(time.Duration(time.Second * 5))
+
+	timeChan <- true
 }
 
-func (m *Manager) decryptAndVerifyUpdateFromPartner(partner *Partner, updateReq *UpdateRequest) (*Update, error) {
+func (m *Manager) decryptAndVerifyUpdateFromPartner(partner *Partner, updateReq *UpdateRequest) (*update.PartnerUpdate, error) {
 	if updateReq.IsHealthCheck {
 		return nil, nil
 	}
@@ -186,7 +205,7 @@ func (m *Manager) decryptAndVerifyUpdateFromPartner(partner *Partner, updateReq 
 		}
 	}
 
-	update := Update{}
+	update := update.PartnerUpdate{}
 	if err := json.Unmarshal(updateJSON, &update); err != nil {
 		return nil, errors.Wrap(err, "failed to Unmarshal update JSON from partner")
 	}
@@ -194,15 +213,44 @@ func (m *Manager) decryptAndVerifyUpdateFromPartner(partner *Partner, updateReq 
 	return &update, nil
 }
 
-// SetPartnerUUID allows the brain to set our partner's uuid
-func (m *Manager) SetPartnerUUID(uuid string) {
-	m.partner.UUID = uuid
+func (m *Manager) encryptAndSignUpdateForPartner(partner *Partner, update *update.PartnerUpdate) (*UpdateRequest, error) {
+	updateReq := &UpdateRequest{}
+
+	if partner.DataKey == nil {
+		return nil, errors.New("missing data key for partner")
+	}
+
+	updateJSON, err := json.Marshal(update)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to marshal update")
+	}
+
+	encUpdate, err := partner.DataKey.Encrypt(updateJSON)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to Encrypt update")
+	}
+
+	var updateSig *simplcrypto.Signature
+	var signErr error
+
+	if partner.ActiveSession != nil {
+		// if we are the outgoing partner, sign with our session keypair
+		updateSig, signErr = partner.ActiveSession.Keypair.Sign(updateJSON)
+		if signErr != nil {
+			return nil, errors.Wrap(signErr, "failed to Sign update with activeSession.KeyPair")
+		}
+
+		updateReq.Session = partner.ActiveSession.Session
+	} else {
+		// if we are the incoming partner, sign with our master keypair
+		updateSig, signErr = m.masterKeypair.Sign(updateJSON)
+		if signErr != nil {
+			return nil, errors.Wrap(signErr, "failed to Sign update with masterKeypair")
+		}
+	}
+
+	updateReq.EncUpdate = encUpdate
+	updateReq.UpdateSignature = updateSig
+
+	return updateReq, nil
 }
-
-// func (m *Manager) lockUnlockPartner() func() {
-// 	m.partnerLock.Lock()
-
-// 	return func() {
-// 		m.partnerLock.Unlock()
-// 	}
-// }

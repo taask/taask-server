@@ -16,21 +16,22 @@ import (
 // Manager is the facade for the subsystem managers (schedule, storage, update, auth)
 type Manager struct {
 	// Updater manages updates to tasks and coordinates listeners, storage, and metrics
-	Updater *update.Manager
+	updater *update.Manager
 
 	// Scheduler consumes tasks and schedules them onto the compute plane
 	scheduler *schedule.Manager
-	storage   storage.Manager
+
+	// storage manages persistence of tasks, etc
+	storage storage.Manager
 
 	// runnerAuth manages the authentication of runners
-	runnerAuth     auth.Manager
-	RunnerJoinCode string
+	runnerAuth auth.Manager
 
 	// clientAuth manages the authentication of clients
 	clientAuth auth.Manager
 
-	// PartnerManager manages the authentication of partners
-	PartnerManager *partner.Manager
+	// partnerManager manages sync with partners
+	partnerManager *partner.Manager
 
 	// metrics manages observability
 	metrics *metrics.Manager
@@ -46,20 +47,25 @@ func NewManager(storage storage.Manager, runnerAuth, clientAuth auth.Manager, pa
 
 	updater := update.NewManager(storage, metrics)
 
+	if partnerManager == nil {
+		partnerManager = &partner.Manager{UUID: ""}
+	}
+
 	scheduler := schedule.NewManager(updater)
 	go scheduler.Start()
 
 	return &Manager{
-		Updater: updater,
+		updater: updater,
 
 		scheduler: scheduler,
-		storage:   storage,
+
+		storage: storage,
 
 		runnerAuth: runnerAuth,
 
 		clientAuth: clientAuth,
 
-		PartnerManager: partnerManager,
+		partnerManager: partnerManager,
 
 		metrics: metrics,
 	}

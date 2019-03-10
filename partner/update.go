@@ -1,38 +1,17 @@
 package partner
 
 import (
-	"sync"
+	"fmt"
 
-	"github.com/taask/taask-server/auth"
+	log "github.com/cohix/simplog"
 	"github.com/taask/taask-server/model"
 )
 
-// Update represents a sync between two partners
-type Update struct {
-	Tasks    []model.Task
-	Groups   []auth.MemberGroup
-	Sessions []auth.MemberAuth
+// AddTaskForUpdate adds a task to be synced to partners
+func (m *Manager) AddTaskForUpdate(task model.Task) {
+	defer m.partner.lockUnlockUpdate()
 
-	lock *sync.Mutex
-}
+	m.partner.Update.AddTask(task)
 
-func (u *Update) addTask(task model.Task) {
-	u.lock.Lock()
-	defer u.lock.Unlock()
-
-	u.Tasks = append(u.Tasks, task)
-}
-
-func (u *Update) addGroup(group auth.MemberGroup) {
-	u.lock.Lock()
-	defer u.lock.Unlock()
-
-	u.Groups = append(u.Groups, group)
-}
-
-func (u *Update) addSession(session auth.MemberAuth) {
-	u.lock.Lock()
-	defer u.lock.Unlock()
-
-	u.Sessions = append(u.Sessions, session)
+	log.LogInfo(fmt.Sprintf("added task %s for partner update", task.UUID))
 }
