@@ -12,7 +12,7 @@ install/server: build/server/docker
 
 install/server/partner:
 	helm template $(serverpath)/ops/chart \
-	--set Tag=$(shell cat ./taask-server/.build/tag) --set HomeDir=$(HOME) --set Suffix="-partner" --set PartnerHost="taask-server" \
+	--set Tag=$(shell cat ./taask-server/.build/tag) --set HomeDir=$(HOME) --set Suffix="-partner" --set PartnerHost="taask-server-manager" \
 	| linkerd inject --proxy-bind-timeout 30s - \
 	| kubectl apply -f - -n taask
 
@@ -26,12 +26,13 @@ logs/server/search:
 	kubectl logs deployment/taask-server taask-server -n taask -f | grep $(search)
 
 uninstall/server:
-	kubectl delete service taask-server -n taask
+	kubectl delete service taask-server-internal -n taask
+	kubectl delete service taask-server-manager -n taask
 	kubectl delete service taask-server-ingress -n taask
 	kubectl delete deployment taask-server -n taask
 
 uninstall/server/partner:
-	kubectl delete service taask-server-partner -n taask
+	kubectl delete service taask-server-manager-partner -n taask
 	kubectl delete deployment taask-server-partner -n taask
 
 tag/server/dev:

@@ -3,7 +3,8 @@ kind: Deployment
 metadata:
   name: taask-server{{ .Values.Suffix }}
   labels: &DeploymentLabels
-    io.taask/component: taask-server{{ .Values.Suffix }}
+    io.taask/manager: server{{ .Values.Suffix }}
+    io.taask/component: server
 spec:
   selector:
     matchLabels: *DeploymentLabels
@@ -44,17 +45,30 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: taask-server{{ .Values.Suffix }}
+  name: taask-server-internal
   labels:
-    io.taask/service: taask-server{{ .Values.Suffix }}
+    io.taask/service: server
 spec:
   selector:
-      io.taask/component: taask-server{{ .Values.Suffix }}
+      io.taask/component: server
   ports:
   - name: runner
     port: 3687
   - name: metrics
     port: 3689
+
+---
+  
+apiVersion: v1
+kind: Service
+metadata:
+  name: taask-server-manager{{ .Values.Suffix }}
+  labels:
+    io.taask/service: server-manager{{ .Values.Suffix }}
+spec:
+  selector:
+      io.taask/manager: server{{ .Values.Suffix }}
+  ports:
   - name: partner
     port: 3690
 
@@ -65,8 +79,9 @@ kind: Service
 metadata:
   name: taask-server-ingress
   labels:
-    io.taask/service: taask-server
+    io.taask/component: server
 spec:
+  type: NodePort
   ports:
   - name: task
     port: 3688
@@ -77,6 +92,4 @@ spec:
   #   protocol: TCP
   #   nodePort: 30600
   selector:
-    io.taask/component: taask-server
-    io.taask/component: taask-server{{ .Values.Suffix }}
-  type: NodePort
+    io.taask/component: server
