@@ -104,7 +104,7 @@ func (ts TaskService) CheckTask(req *CheckTaskRequest, stream TaskService_CheckT
 
 			resp := &CheckTaskResponse{
 				Status:     task.Status,
-				EncTaskKey: task.Meta.ClientEncTaskKey,
+				EncTaskKey: task.GetEncTaskKey(task.Meta.ClientKeyKID),
 				Result:     update,
 			}
 

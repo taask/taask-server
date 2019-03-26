@@ -5,6 +5,7 @@ import (
 	"net"
 	"time"
 
+	simplcrypto "github.com/cohix/simplcrypto"
 	log "github.com/cohix/simplog"
 	"github.com/pkg/errors"
 	"github.com/taask/taask-server/auth"
@@ -94,13 +95,15 @@ func (rs *RunnerService) RegisterRunner(req *RegisterRunnerRequest, stream Runne
 
 		// if uuid is "", then it's a heartbeat
 		if task.UUID != "" {
-			runnerEncKey, err := rs.Manager.EncryptTaskKeyForRunner(runner.UUID, task.Meta.MasterEncTaskKey)
+			masterEncKey := task.GetEncTaskKey(rs.Manager.GetMasterRunnerPubKey().KID)
+
+			runnerEncKey, err := rs.Manager.EncryptTaskKeyForRunner(runner.UUID, masterEncKey)
 			if err != nil {
 				log.LogError(errors.Wrap(err, "failed to ReEncryptTaskKey"))
 				continue
 			}
 
-			update.RunnerEncTaskKey = runnerEncKey
+			update.AddedEncTaskKeys = []*simplcrypto.Message{runnerEncKey}
 
 			var updateErr error
 			update, updateErr = task.Update(update)

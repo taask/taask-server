@@ -18,22 +18,20 @@ message TaskMeta {
 	repeated string Annotations = 1;
 	string RunnerUUID = 2;
 	string PartnerUUID = 3;
-	simpl.crypto.Message MasterEncTaskKey = 4; // the task key encrypted by the master runner pubkey
-	simpl.crypto.Message RunnerEncTaskKey = 5; // the task key encrypted by the assigned runner's pubkey
-	simpl.crypto.Message ClientEncTaskKey = 6; // the task key encrypted by the client keypair
-	int32 RetrySeconds = 7;
-	int32 TimeoutSeconds = 8;
-	int32 Version = 9;
-	string GroupUUID = 10;
+	string ClientKeyKID = 4;
+	map<string, simpl.crypto.Message> EncTaskKeys = 5; // the task key encrypted by various other keys
+	int32 RetrySeconds = 6;
+	int32 TimeoutSeconds = 7;
+	int32 Version = 8;
+	string GroupUUID = 9;
 }
 
 message TaskUpdate {
 	string UUID = 1;
 	string status = 2;
 	simpl.crypto.Message EncResult = 3;
-	simpl.crypto.Message RunnerEncTaskKey = 4;
+	repeated simpl.crypto.Message AddedEncTaskKeys = 4;
 	string RunnerUUID = 5;
-	string ChildRunnerUUID = 6;
-	int32 RetrySeconds = 7;
-	int32 Version = 8;
+	int32 RetrySeconds = 6;
+	int32 Version = 7;
 }

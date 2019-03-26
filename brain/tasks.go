@@ -22,6 +22,8 @@ func (m *Manager) ScheduleTask(task *model.Task) (string, error) {
 		task.Meta.TimeoutSeconds = 600 // 10m default; TODO: make this configurable
 	}
 
+	// var encTaskKeys []*simplcrypto.Message
+
 	if partnerUUID := m.partnerManager.HealthyPartnerUUID(); partnerUUID != "" {
 		randomizer := rand.Intn(100)
 
@@ -30,6 +32,9 @@ func (m *Manager) ScheduleTask(task *model.Task) (string, error) {
 		} else {
 			task.Meta.PartnerUUID = partnerUUID
 		}
+
+		// partnerEncTaskKey := m.partnerManager.Auth.ReEncryptTaskKey(partnerUUID)
+
 	} else {
 		task.Meta.PartnerUUID = m.partnerManager.UUID
 	}
