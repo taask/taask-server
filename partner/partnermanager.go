@@ -113,6 +113,10 @@ func (m *Manager) HealthyPartnerUUID() string {
 		return ""
 	}
 
+	if m.partner == nil {
+		return ""
+	}
+
 	if m.partner.HealthChecker != nil {
 		if m.partner.HealthChecker.IsHealthy {
 			return m.partner.UUID

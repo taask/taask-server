@@ -1,9 +1,6 @@
 package brain
 
 import (
-	"fmt"
-	"math/rand"
-
 	"github.com/pkg/errors"
 	"github.com/taask/taask-server/model"
 	"github.com/taask/taask-server/model/validator"
@@ -22,19 +19,19 @@ func (m *Manager) ScheduleTask(task *model.Task) (string, error) {
 		task.Meta.TimeoutSeconds = 600 // 10m default; TODO: make this configurable
 	}
 
-	if partnerUUID := m.partnerManager.HealthyPartnerUUID(); partnerUUID != "" {
-		randomizer := rand.Intn(100)
+	// if partnerUUID := m.partnerManager.HealthyPartnerUUID(); partnerUUID != "" {
+	// 	randomizer := rand.Intn(100)
 
-		if randomizer < 50 {
-			task.Meta.PartnerUUID = m.partnerManager.UUID
-		} else {
-			task.Meta.PartnerUUID = partnerUUID
-		}
-	} else {
-		task.Meta.PartnerUUID = m.partnerManager.UUID
-	}
+	// 	if randomizer < 50 {
+	// 		task.Meta.PartnerUUID = m.partnerManager.UUID
+	// 	} else {
+	// 		task.Meta.PartnerUUID = partnerUUID
+	// 	}
+	// } else {
+	// 	task.Meta.PartnerUUID = m.partnerManager.UUID
+	// }
 
-	fmt.Println(fmt.Sprintf("adding task with PartnerUUID %s, mine is %s", task.Meta.PartnerUUID, m.partnerManager.UUID))
+	// fmt.Println(fmt.Sprintf("adding task with PartnerUUID %s, mine is %s", task.Meta.PartnerUUID, m.partnerManager.UUID))
 
 	if err := m.storage.Add(*task); err != nil {
 		return "", errors.Wrap(err, "failed to storage.Add")
@@ -67,11 +64,12 @@ func (m *Manager) UpdateTask(update model.TaskUpdate) error {
 		return errors.New("RetrySeconds is immutable")
 	}
 
-	task := m.updater.UpdateTask(update)
+	// task := m.updater.UpdateTask(update)
+	m.updater.UpdateTask(update)
 
-	if task != nil {
-		go m.partnerManager.AddTaskForUpdate(*task)
-	}
+	// if task != nil {
+	// 	go m.partnerManager.AddTaskForUpdate(*task)
+	// }
 
 	return nil
 }
