@@ -35,11 +35,8 @@ spec:
           value: {{ .Values.PartnerHost }}
       volumes:
       - name: taask-config
-        hostPath:
-          # directory location on host
-          path: {{ .Values.HomeDir }}/.taask/server/config
-          # this field is optional
-          type: Directory
+        secret:
+          secretName: taask-server-config
 ---
   
 apiVersion: v1

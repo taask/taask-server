@@ -4,6 +4,9 @@ servertag = dev
 build/server/docker: tag/server/dev
 	docker build $(serverpath) -t taask/server:$(shell cat ./taask-server/.build/tag)
 
+push/server/docker:	
+	docker push taask/server:$(shell cat ./taask-server/.build/tag)
+
 install/server: build/server/docker
 	helm template $(serverpath)/ops/chart \
 	--set Tag=$(shell cat ./taask-server/.build/tag) --set HomeDir=$(HOME) \
@@ -38,6 +41,12 @@ uninstall/server/partner:
 tag/server/dev:
 	mkdir -p $(serverpath)/.build
 	date +%s | openssl sha256 | base64 | head -c 12 > $(serverpath)/.build/tag
+
+install/secrets:
+	kubectl create secret generic taask-server-config --from-file=$(HOME)/.taask/server/config/client-auth.yaml --from-file=$(HOME)/.taask/server/config/runner-auth.yaml -n taask
+
+uninstall/secrets:
+	kubectl delete secret taask-server-config -n taask
 
 proto/server/model:
 	protoc -I=$(GOPATH)/src -I=. -I=model/proto --go_out=plugins=grpc:$(GOPATH)/src $(shell ls ./model/proto/)
