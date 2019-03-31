@@ -48,7 +48,7 @@ func (m *Manager) generateAndSendDataKeyToPartner(partner *Partner, server Partn
 		return errors.Wrap(err, "failed to Encrypt data key")
 	}
 
-	keySig, err := m.masterKeypair.Sign(newKey.JSON())
+	keySig, err := m.keyservice.Sign(newKey.JSON())
 	if err != nil {
 		return errors.Wrap(err, "failed to Sign data key")
 	}

@@ -8,10 +8,14 @@ import (
 )
 
 // AddTaskForUpdate adds a task to be synced to partners
-func (m *Manager) AddTaskForUpdate(task model.Task) {
+func (m *Manager) AddTaskForUpdate(task *model.Task) {
+	if task == nil {
+		return
+	}
+
 	defer m.partner.lockUnlockUpdate()()
 
-	m.partner.Update.AddTask(task)
+	m.partner.Update.AddTask(*task)
 
 	log.LogInfo(fmt.Sprintf("added task %s for partner update", task.UUID))
 }

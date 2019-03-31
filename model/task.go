@@ -97,6 +97,14 @@ func (t *Task) ApplyUpdate(update TaskUpdate, logIt bool) error {
 		t.Meta.RetrySeconds = update.RetrySeconds
 	}
 
+	if update.PartnerUUID != "" && t.Meta.PartnerUUID != update.PartnerUUID {
+		if logIt {
+			log.LogInfo(fmt.Sprintf("task %s assigned to partner %s", t.UUID, update.PartnerUUID))
+		}
+
+		t.Meta.PartnerUUID = update.PartnerUUID
+	}
+
 	return nil
 }
 

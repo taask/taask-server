@@ -3,19 +3,16 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"path/filepath"
 
-	"github.com/cohix/simplcrypto"
 	log "github.com/cohix/simplog"
 	"github.com/pkg/errors"
 	"github.com/taask/taask-server/auth"
 	"github.com/taask/taask-server/brain"
 	"github.com/taask/taask-server/config"
+	"github.com/taask/taask-server/keyservice"
 	"github.com/taask/taask-server/partner"
 	"github.com/taask/taask-server/storage"
 )
-
-var joinCodeWritePath = filepath.Join(config.DefaultServerConfigDir(), "joincode")
 
 // Bootstrap bootstraps the service
 func Bootstrap() (*brain.Manager, error) {
@@ -26,12 +23,18 @@ func Bootstrap() (*brain.Manager, error) {
 
 	defer log.LogTrace("Bootstrap")()
 
-	runnerAuth, err := configureRunnerAuthManager(&serverConfig.RunnerAuth.MemberGroup)
+	// TODO: load node key from config?
+	keyservice, err := keyservice.NewManager()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to NewManager for keyservice")
+	}
+
+	runnerAuth, err := configureRunnerAuthManager(&serverConfig.RunnerAuth.MemberGroup, keyservice)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to configureRunnerAuthManager")
 	}
 
-	clientAuth, err := configureClientAuthManager(&serverConfig.ClientAuth.MemberGroup)
+	clientAuth, err := configureClientAuthManager(&serverConfig.ClientAuth.MemberGroup, keyservice)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to configureClientAuthManager")
 	}
@@ -39,7 +42,7 @@ func Bootstrap() (*brain.Manager, error) {
 	var partnerManager *partner.Manager
 
 	if serverConfig.PartnerAuth != nil {
-		partnerManager, err = configurePartnerManager(serverConfig.PartnerAuth)
+		partnerManager, err = configurePartnerManager(serverConfig.PartnerAuth, keyservice)
 		if err != nil {
 			return nil, errors.Wrap(err, "failed to configurePartnerManager")
 		} else if partnerManager == nil {
@@ -52,7 +55,7 @@ func Bootstrap() (*brain.Manager, error) {
 		log.LogInfo("partner manager not configured")
 	}
 
-	brain := brain.NewManager(storage.NewMemory(), runnerAuth, clientAuth, partnerManager)
+	brain := brain.NewManager(keyservice, storage.NewMemory(), runnerAuth, clientAuth, partnerManager)
 
 	if partnerManager != nil {
 		partnerManager.SetApplyUpdateFunc(brain.PartnerUpdateFunc())
@@ -73,8 +76,8 @@ func startMetricsServer(brain *brain.Manager) {
 	}
 }
 
-func configureRunnerAuthManager(defaultGroup *auth.MemberGroup) (*auth.InternalAuthManager, error) {
-	manager, err := auth.NewInternalAuthManager()
+func configureRunnerAuthManager(defaultGroup *auth.MemberGroup, keyservice keyservice.KeyService) (*auth.InternalAuthManager, error) {
+	manager, err := auth.NewInternalAuthManager(keyservice)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to NewInternalAuthManager")
 	}
@@ -94,8 +97,8 @@ func configureRunnerAuthManager(defaultGroup *auth.MemberGroup) (*auth.InternalA
 	return manager, nil
 }
 
-func configureClientAuthManager(adminGroup *auth.MemberGroup) (*auth.InternalAuthManager, error) {
-	manager, err := auth.NewInternalAuthManager()
+func configureClientAuthManager(adminGroup *auth.MemberGroup, keyservice keyservice.KeyService) (*auth.InternalAuthManager, error) {
+	manager, err := auth.NewInternalAuthManager(keyservice)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to NewInternalAuthManager")
 	}
@@ -115,13 +118,8 @@ func configureClientAuthManager(adminGroup *auth.MemberGroup) (*auth.InternalAut
 	return manager, nil
 }
 
-func configurePartnerManager(config *config.ClientAuthConfig) (*partner.Manager, error) {
-	masterKeypair, err := simplcrypto.GenerateMasterKeyPair()
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to GenerateMasterKeyPair")
-	}
-
-	partnerManager, err := partner.NewManager(config, masterKeypair)
+func configurePartnerManager(config *config.ClientAuthConfig, keyservice keyservice.KeyService) (*partner.Manager, error) {
+	partnerManager, err := partner.NewManager(config, keyservice)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to NewManager")
 	}

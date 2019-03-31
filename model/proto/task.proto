@@ -34,4 +34,5 @@ message TaskUpdate {
 	string RunnerUUID = 5;
 	int32 RetrySeconds = 6;
 	int32 Version = 7;
+	string PartnerUUID = 8;
 }
