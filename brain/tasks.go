@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 
+	"github.com/cohix/simplcrypto"
 	"github.com/pkg/errors"
 	"github.com/taask/taask-server/model"
 	"github.com/taask/taask-server/model/validator"
@@ -18,30 +19,44 @@ func (m *Manager) ScheduleTask(task *model.Task) (string, error) {
 	task.UUID = model.NewTaskUUID()
 	task.Status = ""      // clear this in case it was set
 	task.Meta.Version = 0 // set this to 0
+	task.Meta.PartnerUUID = ""
+
 	if task.Meta.TimeoutSeconds == 0 {
 		task.Meta.TimeoutSeconds = 600 // 10m default; TODO: make this configurable
 	}
 
-	if partnerUUID := m.partnerManager.HealthyPartnerUUID(); partnerUUID != "" {
+	encTaskKeys := []*simplcrypto.Message{}
+
+	if partnerUUID, partnerPubKey := m.partnerManager.HealthyPartner(); partnerPubKey != nil {
 		randomizer := rand.Intn(100)
 
 		if randomizer < 50 {
-			task.Meta.PartnerUUID = m.partnerManager.UUID
-		} else {
 			task.Meta.PartnerUUID = partnerUUID
-		}
-	} else {
-		task.Meta.PartnerUUID = m.partnerManager.UUID
-	}
 
-	fmt.Println(fmt.Sprintf("adding task with PartnerUUID %s, mine is %s", task.Meta.PartnerUUID, m.partnerManager.UUID))
+			encTaskKey := task.GetEncTaskKey(m.keyService.PubKey().KID)
+			if encTaskKey == nil {
+				return "", fmt.Errorf("failed to find task key encrypted with our node key (KID %s)", m.keyService.PubKey().KID)
+			}
+
+			partnerEncTaskKey, err := m.keyService.ReEncryptTaskKey(encTaskKey, partnerPubKey)
+			if err != nil {
+				return "", errors.Wrapf(err, "failed to ReEncryptTaskKey for partner %s", partnerUUID)
+			}
+
+			encTaskKeys = append(encTaskKeys, partnerEncTaskKey)
+		} else {
+			task.Meta.PartnerUUID = m.partnerManager.UUID
+		}
+
+		fmt.Println(fmt.Sprintf("adding task with PartnerUUID %s, mine is %s", task.Meta.PartnerUUID, m.partnerManager.UUID))
+	}
 
 	if err := m.storage.Add(*task); err != nil {
 		return "", errors.Wrap(err, "failed to storage.Add")
 	}
 
 	// we do a manual update to waiting to ensure the metrics catch the new task
-	update, err := task.Update(model.TaskUpdate{Status: model.TaskStatusWaiting})
+	update, err := task.Update(model.TaskUpdate{Status: model.TaskStatusWaiting, AddedEncTaskKeys: encTaskKeys, PartnerUUID: task.Meta.PartnerUUID})
 	if err != nil {
 		return "", errors.Wrap(err, "failed to task.Update")
 	}
@@ -69,9 +84,7 @@ func (m *Manager) UpdateTask(update model.TaskUpdate) error {
 
 	task := m.updater.UpdateTask(update)
 
-	if task != nil {
-		go m.partnerManager.AddTaskForUpdate(*task)
-	}
+	go m.partnerManager.AddTaskForUpdate(task)
 
 	return nil
 }

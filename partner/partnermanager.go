@@ -12,6 +12,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/taask/taask-server/auth"
 	"github.com/taask/taask-server/config"
+	"github.com/taask/taask-server/keyservice"
 	"github.com/taask/taask-server/model"
 	"github.com/taask/taask-server/update"
 )
@@ -20,15 +21,14 @@ const overridePartnerHostEnvKey = "TAASK_PARTNER_HOST"
 
 // Manager controls partner updating and health checking
 type Manager struct {
+	// keyservice gives us access to functions of the node keypair
+	keyservice keyservice.KeyService
+
 	// our UUID, for auth purposes
 	UUID string
 
 	// the auth manager responsible for incoming partners
 	Auth auth.Manager
-
-	// this is the same keypair that our authManager is created with,
-	// allowing us to decrypt messages sent to us using that pubkey
-	masterKeypair *simplcrypto.KeyPair
 
 	// the partner we are syncing with
 	partner     *Partner
@@ -48,7 +48,7 @@ type activeSession struct {
 }
 
 // NewManager creates a new partner manager
-func NewManager(config *config.ClientAuthConfig, masterKeypair *simplcrypto.KeyPair) (*Manager, error) {
+func NewManager(config *config.ClientAuthConfig, keyservice keyservice.KeyService) (*Manager, error) {
 	if config.Service == nil {
 		return nil, nil
 	}
@@ -68,7 +68,7 @@ func NewManager(config *config.ClientAuthConfig, masterKeypair *simplcrypto.KeyP
 
 	uuid := model.NewPartnerUUID()
 
-	authMan, err := auth.NewInternalAuthManagerWithMasterKeypair(masterKeypair)
+	authMan, err := auth.NewInternalAuthManager(keyservice)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to NewInternalAuthManager")
 	}
@@ -86,12 +86,12 @@ func NewManager(config *config.ClientAuthConfig, masterKeypair *simplcrypto.KeyP
 	}
 
 	manager := &Manager{
-		UUID:          uuid,
-		partner:       partner,
-		partnerLock:   &sync.Mutex{},
-		config:        config,
-		Auth:          authMan,
-		masterKeypair: masterKeypair,
+		keyservice:  keyservice,
+		UUID:        uuid,
+		partner:     partner,
+		partnerLock: &sync.Mutex{},
+		config:      config,
+		Auth:        authMan,
 	}
 
 	return manager, nil
@@ -107,19 +107,33 @@ func (m *Manager) SetPartnerUUID(uuid string) {
 	m.partner.UUID = uuid
 }
 
-// HealthyPartnerUUID returns a UUID of a healthy partner
-func (m *Manager) HealthyPartnerUUID() string {
+// HealthyPartner returns a UUID and pubkey of a healthy partner
+func (m *Manager) HealthyPartner() (string, *simplcrypto.KeyPair) {
 	if m == nil {
-		return ""
+		return "", nil
+	}
+
+	if m.partner == nil {
+		return "", nil
 	}
 
 	if m.partner.HealthChecker != nil {
 		if m.partner.HealthChecker.IsHealthy {
-			return m.partner.UUID
+			if m.partner.ActiveSession != nil {
+				return m.partner.UUID, m.partner.ActiveSession.MasterPubKey
+			} else {
+				pubkey, err := m.Auth.MemberPubkey(m.partner.UUID)
+				if err != nil {
+					// TODO: handle this more gracefully
+					return "", nil
+				}
+
+				return m.partner.UUID, pubkey
+			}
 		}
 	}
 
-	return ""
+	return "", nil
 }
 
 func (m *Manager) handleUpdates(sendChan, recvChan chan update.PartnerUpdate, unhealthyChan chan error) error {
@@ -233,8 +247,8 @@ func (m *Manager) encryptAndSignUpdateForPartner(partner *Partner, update *updat
 
 		updateReq.Session = partner.ActiveSession.Session
 	} else {
-		// if we are the incoming partner, sign with our master keypair
-		updateSig, signErr = m.masterKeypair.Sign(updateJSON)
+		// if we are the incoming partner, sign with our node keypair
+		updateSig, signErr = m.keyservice.Sign(updateJSON)
 		if signErr != nil {
 			return nil, errors.Wrap(signErr, "failed to Sign update with masterKeypair")
 		}

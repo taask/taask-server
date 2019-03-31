@@ -27,7 +27,12 @@ func (m *Manager) UnregisterRunner(runner *model.Runner) {
 
 // EncryptTaskKeyForRunner encrypts a task key for a runner
 func (m *Manager) EncryptTaskKeyForRunner(runnerUUID string, encTaskKey *simplcrypto.Message) (*simplcrypto.Message, error) {
-	encKey, err := m.runnerAuth.ReEncryptTaskKey(runnerUUID, encTaskKey)
+	runnerPubKey, err := m.runnerAuth.MemberPubkey(runnerUUID)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to MemberPubkey")
+	}
+
+	encKey, err := m.keyService.ReEncryptTaskKey(encTaskKey, runnerPubKey)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to ReEncryptTaskKey")
 	}
@@ -37,5 +42,5 @@ func (m *Manager) EncryptTaskKeyForRunner(runnerUUID string, encTaskKey *simplcr
 
 // GetMasterRunnerPubKey returns the master runner pubkey
 func (m *Manager) GetMasterRunnerPubKey() *simplcrypto.SerializablePubKey {
-	return m.runnerAuth.MasterPubKey()
+	return m.keyService.PubKey()
 }

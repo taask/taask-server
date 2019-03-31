@@ -6,6 +6,7 @@ import (
 	log "github.com/cohix/simplog"
 	"github.com/pkg/errors"
 	"github.com/taask/taask-server/auth"
+	"github.com/taask/taask-server/keyservice"
 	"github.com/taask/taask-server/metrics"
 	"github.com/taask/taask-server/partner"
 	"github.com/taask/taask-server/schedule"
@@ -15,6 +16,9 @@ import (
 
 // Manager is the facade for the subsystem managers (schedule, storage, update, auth)
 type Manager struct {
+	// keyservice manages the node keypair
+	keyService keyservice.KeyService
+
 	// Updater manages updates to tasks and coordinates listeners, storage, and metrics
 	updater *update.Manager
 
@@ -38,7 +42,7 @@ type Manager struct {
 }
 
 // NewManager creates a new manager
-func NewManager(storage storage.Manager, runnerAuth, clientAuth auth.Manager, partnerManager *partner.Manager) *Manager {
+func NewManager(keyservice keyservice.KeyService, storage storage.Manager, runnerAuth, clientAuth auth.Manager, partnerManager *partner.Manager) *Manager {
 	metrics, err := metrics.NewManager()
 	if err != nil {
 		log.LogError(errors.Wrap(err, "failed to metrics.NewManager"))
@@ -55,6 +59,8 @@ func NewManager(storage storage.Manager, runnerAuth, clientAuth auth.Manager, pa
 	go scheduler.Start()
 
 	return &Manager{
+		keyService: keyservice,
+
 		updater: updater,
 
 		scheduler: scheduler,

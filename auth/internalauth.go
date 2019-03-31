@@ -6,42 +6,27 @@ import (
 
 	"github.com/cohix/simplcrypto"
 	"github.com/pkg/errors"
+	"github.com/taask/taask-server/keyservice"
 )
 
 // InternalAuthManager manages the auth of members, with in-memory storage
 type InternalAuthManager struct {
+	// gives us access to functions with the node Keypair
+	keyservice keyservice.KeyService
+
 	// the join code that runners need to sign in order to auth successfully
 	memberGroups map[string]*MemberGroup
 
 	// maps member UUIDs to memberAuths
 	authedMembers map[string]*MemberAuth
-
-	// the master keypair
-	masterKeyPair *simplcrypto.KeyPair
 }
 
 // NewInternalAuthManager returns a new InternalAuthManager
-func NewInternalAuthManager() (*InternalAuthManager, error) {
-	masterPair, err := simplcrypto.GenerateMasterKeyPair()
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to GenerateMasterKeyPair")
-	}
-
+func NewInternalAuthManager(keyservice keyservice.KeyService) (*InternalAuthManager, error) {
 	manager := &InternalAuthManager{
+		keyservice:    keyservice,
 		memberGroups:  make(map[string]*MemberGroup),
 		authedMembers: make(map[string]*MemberAuth),
-		masterKeyPair: masterPair,
-	}
-
-	return manager, nil
-}
-
-// NewInternalAuthManagerWithMasterKeypair returns a new InternalAuthManager
-func NewInternalAuthManagerWithMasterKeypair(keypair *simplcrypto.KeyPair) (*InternalAuthManager, error) {
-	manager := &InternalAuthManager{
-		memberGroups:  make(map[string]*MemberGroup),
-		authedMembers: make(map[string]*MemberAuth),
-		masterKeyPair: keypair,
 	}
 
 	return manager, nil
@@ -160,9 +145,14 @@ func (am *InternalAuthManager) AddGroup(group *MemberGroup) error {
 	return nil
 }
 
-// MasterPubKey returns the pubkey from the master keypair
-func (am *InternalAuthManager) MasterPubKey() *simplcrypto.SerializablePubKey {
-	return am.masterKeyPair.SerializablePubKey()
+// MemberPubkey returns the pubkey for an active member
+func (am *InternalAuthManager) MemberPubkey(uuid string) (*simplcrypto.KeyPair, error) {
+	memberAuth, ok := am.authedMembers[uuid]
+	if !ok {
+		return nil, fmt.Errorf("member with uuid %s does not exist", uuid)
+	}
+
+	return memberAuth.PubKey, nil
 }
 
 // EncryptForMember allows messages to be encrypted for members
@@ -178,26 +168,6 @@ func (am *InternalAuthManager) EncryptForMember(memberUUID string, msg []byte) (
 	}
 
 	return encMessage, nil
-}
-
-// ReEncryptTaskKey re-encrypts a task key using a member's pubkey
-func (am *InternalAuthManager) ReEncryptTaskKey(memberUUID string, encTaskKey *simplcrypto.Message) (*simplcrypto.Message, error) {
-	memberAuth, ok := am.authedMembers[memberUUID]
-	if !ok {
-		return nil, errors.New(fmt.Sprintf("member %s key does not exist", memberUUID))
-	}
-
-	decKeyJSON, err := am.masterKeyPair.Decrypt(encTaskKey)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to Decrypt task key")
-	}
-
-	reEncKey, err := memberAuth.PubKey.Encrypt(decKeyJSON)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to Encrypt task key")
-	}
-
-	return reEncKey, nil
 }
 
 // VerifySignatureFromMember allows messages to be encrypted for members

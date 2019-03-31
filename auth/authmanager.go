@@ -16,9 +16,8 @@ type Manager interface {
 	CheckAuthEnsureAdmin(session *Session) error
 	DeleteMemberAuth(uuid string) error
 	AddGroup(group *MemberGroup) error
-	MasterPubKey() *simplcrypto.SerializablePubKey
+	MemberPubkey(uuid string) (*simplcrypto.KeyPair, error)
 	EncryptForMember(memberUUID string, msg []byte) (*simplcrypto.Message, error)
-	ReEncryptTaskKey(memberUUID string, encTaskKey *simplcrypto.Message) (*simplcrypto.Message, error)
 	VerifySignatureFromMember(memberUUID string, msg []byte, sig *simplcrypto.Signature) error
 }
 

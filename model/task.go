@@ -5,6 +5,7 @@ package model
 import (
 	"fmt"
 
+	simplcrypto "github.com/cohix/simplcrypto"
 	log "github.com/cohix/simplog"
 	"github.com/pkg/errors"
 )
@@ -79,12 +80,14 @@ func (t *Task) ApplyUpdate(update TaskUpdate, logIt bool) error {
 		t.Meta.RunnerUUID = update.RunnerUUID
 	}
 
-	if update.RunnerEncTaskKey != nil && t.Meta.RunnerEncTaskKey != update.RunnerEncTaskKey {
-		if logIt {
-			log.LogInfo(fmt.Sprintf("task %s runner key updated (message encrypted with KID %s)", t.UUID, update.RunnerEncTaskKey.KID))
-		}
+	if len(update.AddedEncTaskKeys) > 0 {
+		for i := range update.AddedEncTaskKeys {
+			if logIt {
+				log.LogInfo(fmt.Sprintf("task %s added task key encrypted with KID %s", t.UUID, update.AddedEncTaskKeys[i].KID))
+			}
 
-		t.Meta.RunnerEncTaskKey = update.RunnerEncTaskKey
+			t.AddEncTaskKey(update.AddedEncTaskKeys[i])
+		}
 	}
 
 	if update.RetrySeconds != 0 && t.Meta.RetrySeconds != update.RetrySeconds {
@@ -94,7 +97,50 @@ func (t *Task) ApplyUpdate(update TaskUpdate, logIt bool) error {
 		t.Meta.RetrySeconds = update.RetrySeconds
 	}
 
+	if update.PartnerUUID != "" && t.Meta.PartnerUUID != update.PartnerUUID {
+		if logIt {
+			log.LogInfo(fmt.Sprintf("task %s assigned to partner %s", t.UUID, update.PartnerUUID))
+		}
+
+		t.Meta.PartnerUUID = update.PartnerUUID
+	}
+
 	return nil
+}
+
+// AddEncTaskKey adds an encrypted task key to the task meta
+func (t *Task) AddEncTaskKey(encKey *simplcrypto.Message) {
+	t.Meta.EncTaskKeys[encKey.KID] = encKey
+}
+
+// GetEncTaskKey returns an encrypted task key
+func (t *Task) GetEncTaskKey(kid string) *simplcrypto.Message {
+	encKey, exists := t.Meta.EncTaskKeys[kid]
+	if !exists {
+		return nil
+	}
+
+	return encKey
+}
+
+// DecryptTaskKey decrypts the task key with the provided task key
+func (t *Task) DecryptTaskKey(key *simplcrypto.KeyPair) (*simplcrypto.SymKey, error) {
+	encKey, exists := t.Meta.EncTaskKeys[key.KID]
+	if !exists {
+		return nil, fmt.Errorf("no task key encrypted with KID %s found for task %s", key.KID, t.UUID)
+	}
+
+	decKeyJSON, err := key.Decrypt(encKey)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to decrypt task key")
+	}
+
+	taskKey, err := simplcrypto.SymKeyFromJSON(decKeyJSON)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to SymKeyFromJSON")
+	}
+
+	return taskKey, nil
 }
 
 // IsPending is if a task is in pending state

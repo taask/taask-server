@@ -13,7 +13,7 @@ import (
 
 // GetMasterPartnerPubKey returns the master runner pubkey
 func (m *Manager) GetMasterPartnerPubKey() *simplcrypto.SerializablePubKey {
-	return m.partnerManager.Auth.MasterPubKey()
+	return m.keyService.PubKey()
 }
 
 // RunPartnerManagerWithServer runs the partner manager with a stream server
