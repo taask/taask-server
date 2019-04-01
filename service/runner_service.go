@@ -87,6 +87,7 @@ func (rs *RunnerService) RegisterRunner(req *RegisterRunnerRequest, stream Runne
 
 	for {
 		task := <-tasksChan
+		var updatedTask *model.Task
 
 		changes := model.TaskChanges{Status: model.TaskStatusQueued, RunnerUUID: runner.UUID}
 
@@ -103,11 +104,19 @@ func (rs *RunnerService) RegisterRunner(req *RegisterRunnerRequest, stream Runne
 			changes.AddedEncTaskKeys = []*simplcrypto.Message{runnerEncKey}
 
 			log.LogInfo(fmt.Sprintf("sending task %s to runner %s", task.UUID, runner.UUID))
+
+			updatedTask, err = rs.Manager.UpdateTask(task.BuildUpdate(changes))
+			if err != nil {
+				log.LogError(errors.Wrap(err, "failed to UpdateTask"))
+				continue
+			}
+
 		} else {
+			updatedTask = task
 			log.LogInfo(fmt.Sprintf("sending runner %s heartbeat", runner.UUID))
 		}
 
-		if err := stream.Send(task); err != nil {
+		if err := stream.Send(updatedTask); err != nil {
 			log.LogError(errors.Wrap(err, "failed to stream.Send"))
 
 			if task.UUID != "" {
@@ -115,11 +124,6 @@ func (rs *RunnerService) RegisterRunner(req *RegisterRunnerRequest, stream Runne
 			}
 
 			break
-		}
-
-		if task.UUID != "" {
-			update := task.BuildUpdate(changes)
-			rs.Manager.UpdateTask(update)
 		}
 	}
 

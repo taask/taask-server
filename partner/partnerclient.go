@@ -26,7 +26,7 @@ func (m *Manager) StartOutgoingManager() {
 		err := m.Run()
 
 		if err != nil {
-			log.LogWarn(err.Error())
+			log.LogWarn("failed to connect to partner, will retry...")
 		} else {
 			log.LogInfo("startOutgoingPartnerManager retrying...")
 		}

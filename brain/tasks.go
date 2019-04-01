@@ -5,6 +5,7 @@ import (
 	"math/rand"
 
 	"github.com/cohix/simplcrypto"
+	log "github.com/cohix/simplog"
 	"github.com/pkg/errors"
 	"github.com/taask/taask-server/model"
 	"github.com/taask/taask-server/model/validator"
@@ -29,7 +30,7 @@ func (m *Manager) ScheduleTask(task *model.Task) (string, error) {
 
 	// if a partner was set, and it's ours, let's set it to waiting
 	if update != nil {
-		if m.isOurTask(task) {
+		if m.isUs(update.Changes.PartnerUUID) {
 			update.Changes.Status = model.TaskStatusWaiting
 		}
 	} else {
@@ -43,7 +44,7 @@ func (m *Manager) ScheduleTask(task *model.Task) (string, error) {
 	}
 
 	// only schedule the task if we own it
-	if m.isOurTask(updatedTask) {
+	if m.isUs(updatedTask.Meta.PartnerUUID) {
 		go m.scheduler.ScheduleTask(updatedTask)
 	}
 
@@ -78,8 +79,8 @@ func (m *Manager) GetTaskUpdateListener(uuid string) chan model.Task {
 	return m.updater.GetListener(uuid)
 }
 
-func (m *Manager) isOurTask(task *model.Task) bool {
-	return task.Meta.PartnerUUID == "" || task.Meta.PartnerUUID == m.partnerManager.UUID
+func (m *Manager) isUs(uuid string) bool {
+	return uuid == "" || uuid == m.partnerManager.UUID
 }
 
 func (m *Manager) addNewTask(task *model.Task) error {
@@ -129,7 +130,7 @@ func (m *Manager) setTaskPartnerIfNeeded(task *model.Task) (*model.TaskUpdate, e
 			changes = &model.TaskChanges{PartnerUUID: m.partnerManager.UUID}
 		}
 
-		fmt.Println(fmt.Sprintf("adding task with PartnerUUID %s, mine is %s", task.Meta.PartnerUUID, m.partnerManager.UUID))
+		log.LogInfo(fmt.Sprintf("adding task with PartnerUUID %s, mine is %s", changes.PartnerUUID, m.partnerManager.UUID))
 	}
 
 	if changes != nil {

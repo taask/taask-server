@@ -71,9 +71,8 @@ func (rm *runMonitor) start(updateChan chan model.Task) (*model.Task, error) {
 		}
 
 		if task.IsRetrying() {
-			log.LogInfo(fmt.Sprintf("task %s began retrying, updating runner %s tracker", task.UUID, task.Meta.RunnerUUID))
-
 			if task.Meta.RunnerUUID != "" {
+				log.LogInfo(fmt.Sprintf("task %s began retrying, updating runner %s tracker", task.UUID, task.Meta.RunnerUUID))
 				rm.runnerPool.runnerCompletedTask(task.Meta.RunnerUUID, task.UUID)
 			}
 		}

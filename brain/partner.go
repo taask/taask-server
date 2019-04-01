@@ -37,7 +37,7 @@ func (m *Manager) addTasksFromPartner(tasks []model.Task) error {
 		}
 
 		// only schedule the task if we own it
-		if m.isOurTask(&t) {
+		if m.isUs(t.Meta.PartnerUUID) {
 			update := t.BuildUpdate(model.TaskChanges{Status: model.TaskStatusWaiting})
 
 			updatedTask, err := m.updater.UpdateTask(update)

@@ -36,6 +36,9 @@ const (
 	// task goes running -> retrying if the task (runs past the deadline OR runner dies) AND is marked as retryable
 	// retrying is similar to waiting, except there will be a backoff before it is re-queued
 	TaskStatusRetrying = "retrying"
+
+	// when a task has been unassigned from a runner (i.e. dead task), this value indicates to the updater that the runner UUID should be removed
+	RunnerUUIDNone = "NORUNNERUUID"
 )
 
 // BuildUpdate applies an update to a task object and returns the update with the updated version number
@@ -93,8 +96,15 @@ func ApplyUpdateToTask(task *Task, update *TaskUpdate) (*Task, error) {
 	}
 
 	if update.Changes.RunnerUUID != "" && t.Meta.RunnerUUID != update.Changes.RunnerUUID {
-		log.LogInfo(fmt.Sprintf("task %s assigned to runner %s", t.UUID, update.Changes.RunnerUUID))
-		t.Meta.RunnerUUID = update.Changes.RunnerUUID
+		if update.Changes.RunnerUUID == RunnerUUIDNone {
+			if t.Meta.RunnerUUID != "" {
+				log.LogInfo(fmt.Sprintf("task %s unassigned from runner %s", t.UUID, t.Meta.RunnerUUID))
+				t.Meta.RunnerUUID = ""
+			}
+		} else {
+			log.LogInfo(fmt.Sprintf("task %s assigned to runner %s", t.UUID, update.Changes.RunnerUUID))
+			t.Meta.RunnerUUID = update.Changes.RunnerUUID
+		}
 	}
 
 	if len(update.Changes.AddedEncTaskKeys) > 0 {
@@ -115,7 +125,7 @@ func ApplyUpdateToTask(task *Task, update *TaskUpdate) (*Task, error) {
 		t.Meta.PartnerUUID = update.Changes.PartnerUUID
 	}
 
-	return nil, nil
+	return &t, nil
 }
 
 // AddEncTaskKey adds an encrypted task key to the task meta

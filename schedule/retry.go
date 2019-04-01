@@ -36,7 +36,7 @@ func (sm *Manager) startRetryWorker(taskUUID string) {
 	sm.retrying[taskUUID] = worker
 	sm.retryLock.Unlock()
 
-	update := task.BuildUpdate(model.TaskChanges{Status: model.TaskStatusRetrying, RetrySeconds: retrySeconds, RunnerUUID: ""})
+	update := task.BuildUpdate(model.TaskChanges{Status: model.TaskStatusRetrying, RetrySeconds: retrySeconds, RunnerUUID: model.RunnerUUIDNone})
 
 	_, err := sm.updater.UpdateTask(update)
 	if err != nil {
