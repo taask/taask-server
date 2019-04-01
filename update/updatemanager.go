@@ -13,10 +13,12 @@ import (
 
 // Manager manages task updates
 type Manager struct {
-	storage   storage.Manager
+	storage storage.Manager
+	metrics *metrics.Manager
+
+	// maps task UUIDs to listeners
 	listeners map[string]*taskListener
 	lock      *sync.Mutex
-	metrics   *metrics.Manager
 }
 
 type taskListener struct {
@@ -34,33 +36,35 @@ func NewManager(storage storage.Manager, metrics *metrics.Manager) *Manager {
 }
 
 // UpdateTask updates a task in storage and notifies listeners of the new status
-func (m *Manager) UpdateTask(update model.TaskUpdate) *model.Task {
+func (m *Manager) UpdateTask(update *model.TaskUpdate) (*model.Task, error) {
 	if update.UUID == "" {
 		log.LogError(errors.New("attempted to update task without providing UUID"))
-		return nil
+		return nil, nil
 	}
 
 	task, err := m.storage.Get(update.UUID)
 	if err != nil {
-		log.LogError(errors.Wrap(err, "failed to storage.Get"))
-		return nil
+		return nil, errors.Wrap(err, "failed to storage.Get")
+	}
+
+	if err := task.CheckUpdate(update); err != nil {
+		return nil, errors.Wrap(err, "failed to CheckUpdate")
 	}
 
 	go m.metrics.UpdateTask(*task, update)
 
-	if err := task.ApplyUpdate(update, true); err != nil {
-		log.LogWarn(errors.Wrap(err, "update.Manager failed to ApplyUpdate").Error())
-		return nil
+	updatedTask, err := model.ApplyUpdateToTask(task, update)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to ApplyUpdateToTask")
 	}
 
-	if err := m.storage.Update(*task); err != nil {
-		log.LogError(errors.Wrap(err, "failed to m.storage.Update"))
-		return nil
+	if err := m.storage.Update(*updatedTask); err != nil {
+		return nil, errors.Wrap(err, "failed to m.storage.Update")
 	}
 
-	m.updateListeners(task)
+	m.updateListeners(updatedTask)
 
-	return task
+	return updatedTask, nil
 }
 
 // GetListener gets a channel to listen to task updates, immediately updates the listener with the current state

@@ -28,8 +28,8 @@ message CheckTaskRequest {
 }
 
 message CheckTaskResponse {
-	string status = 1;
-	int32 progress = 2;
+	string Status = 1;
+	int32 Progress = 2;
 	simpl.crypto.Message EncTaskKey = 3;
-	taask.server.model.TaskUpdate result = 4;
+	simpl.crypto.Message Result = 4;
 }
