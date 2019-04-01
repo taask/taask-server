@@ -84,41 +84,41 @@ func (m *Manager) Handler() http.Handler {
 }
 
 // UpdateTask updates the current task metrics
-func (m *Manager) UpdateTask(task model.Task, update model.TaskUpdate) {
-	if update.Status != "" && task.Status != update.Status {
+func (m *Manager) UpdateTask(task model.Task, update *model.TaskUpdate) {
+	if update.Changes.Status != "" && task.Status != update.Changes.Status {
 		m.updateStatusMetrics(task, update)
 	}
 
-	// if update.RunnerUUID != "" && task.Meta.RunnerUUID != update.RunnerUUID {
+	// if update.Changes.RunnerUUID != "" && task.Meta.RunnerUUID != update.Changes.RunnerUUID {
 	// 	log.LogInfo("updating runner metric")
 
-	// 	m.metricMap[update.Status].With(prometheus.Labels{metricsRunnerLabel: update.RunnerUUID, metricsKindLabel: task.Kind}).Inc()
+	// 	m.metricMap[update.Changes.Status].With(prometheus.Labels{metricsRunnerLabel: update.Changes.RunnerUUID, metricsKindLabel: task.Kind}).Inc()
 	// }
 
-	// if update.RetrySeconds != 0 && task.RetrySeconds != update.RetrySeconds {
-	// 	log.LogInfo(fmt.Sprintf("task %s set to retry in %d seconds", task.UUID, update.RetrySeconds))
-	// 	task.RetrySeconds = update.RetrySeconds
+	// if update.Changes.RetrySeconds != 0 && task.RetrySeconds != update.Changes.RetrySeconds {
+	// 	log.LogInfo(fmt.Sprintf("task %s set to retry in %d seconds", task.UUID, update.Changes.RetrySeconds))
+	// 	task.RetrySeconds = update.Changes.RetrySeconds
 	// }
 }
 
-func (m *Manager) updateStatusMetrics(task model.Task, update model.TaskUpdate) {
+func (m *Manager) updateStatusMetrics(task model.Task, update *model.TaskUpdate) {
 	if task.Status != "" {
 		old := m.metricMap[task.Status]
 		old.With(prometheus.Labels{metricsRunnerLabel: task.Meta.RunnerUUID, metricsKindLabel: task.Kind}).Dec()
-	} else if task.Status == "" && update.Status == model.TaskStatusWaiting {
-		// we only want to increment active on the task's first update, which will always be nothing->waiting
+	} else if task.Status == "" && update.Changes.Status == model.TaskStatusWaiting {
+		// we only want to increment active on the task's first update.Changes, which will always be nothing->waiting
 		m.metricMap["active"].With(prometheus.Labels{metricsRunnerLabel: task.Meta.RunnerUUID, metricsKindLabel: task.Kind}).Inc()
 	}
 
-	new := m.metricMap[update.Status]
-	if update.RunnerUUID != "" {
-		// update the runner label if it's changed
-		new.With(prometheus.Labels{metricsRunnerLabel: update.RunnerUUID, metricsKindLabel: task.Kind}).Inc()
+	new := m.metricMap[update.Changes.Status]
+	if update.Changes.RunnerUUID != "" {
+		// update.Changes the runner label if it's changed
+		new.With(prometheus.Labels{metricsRunnerLabel: update.Changes.RunnerUUID, metricsKindLabel: task.Kind}).Inc()
 	} else {
 		new.With(prometheus.Labels{metricsRunnerLabel: task.Meta.RunnerUUID, metricsKindLabel: task.Kind}).Inc()
 	}
 
-	if update.Status == model.TaskStatusCompleted || update.Status == model.TaskStatusFailed {
+	if update.Changes.Status == model.TaskStatusCompleted || update.Changes.Status == model.TaskStatusFailed {
 		m.metricMap["active"].With(prometheus.Labels{metricsRunnerLabel: task.Meta.RunnerUUID, metricsKindLabel: task.Kind}).Dec()
 	}
 }

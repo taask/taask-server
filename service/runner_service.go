@@ -88,10 +88,7 @@ func (rs *RunnerService) RegisterRunner(req *RegisterRunnerRequest, stream Runne
 	for {
 		task := <-tasksChan
 
-		update := model.TaskUpdate{
-			Status:     model.TaskStatusQueued,
-			RunnerUUID: runner.UUID,
-		}
+		changes := model.TaskChanges{Status: model.TaskStatusQueued, RunnerUUID: runner.UUID}
 
 		// if uuid is "", then it's a heartbeat
 		if task.UUID != "" {
@@ -103,15 +100,7 @@ func (rs *RunnerService) RegisterRunner(req *RegisterRunnerRequest, stream Runne
 				continue
 			}
 
-			update.AddedEncTaskKeys = []*simplcrypto.Message{runnerEncKey}
-
-			var updateErr error
-			update, updateErr = task.Update(update)
-
-			if updateErr != nil {
-				log.LogError(errors.Wrap(updateErr, "RegisterRunner failed to task.Update"))
-				continue
-			}
+			changes.AddedEncTaskKeys = []*simplcrypto.Message{runnerEncKey}
 
 			log.LogInfo(fmt.Sprintf("sending task %s to runner %s", task.UUID, runner.UUID))
 		} else {
@@ -122,7 +111,6 @@ func (rs *RunnerService) RegisterRunner(req *RegisterRunnerRequest, stream Runne
 			log.LogError(errors.Wrap(err, "failed to stream.Send"))
 
 			if task.UUID != "" {
-				rs.Manager.UpdateTask(update) // persist the queued update so that the task goes waiting -> queued -> retrying
 				log.LogInfo(fmt.Sprintf("task %s is dead, a retry worker should be started for it", task.UUID))
 			}
 
@@ -130,6 +118,7 @@ func (rs *RunnerService) RegisterRunner(req *RegisterRunnerRequest, stream Runne
 		}
 
 		if task.UUID != "" {
+			update := task.BuildUpdate(changes)
 			rs.Manager.UpdateTask(update)
 		}
 	}
@@ -151,7 +140,7 @@ func (rs *RunnerService) UpdateTask(ctx context.Context, req *UpdateTaskRequest)
 		return &Empty{}, nil
 	}
 
-	rs.Manager.UpdateTask(*req.Update)
+	rs.Manager.UpdateTask(req.Update)
 
 	return &Empty{}, nil
 }

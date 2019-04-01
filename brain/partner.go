@@ -1,8 +1,6 @@
 package brain
 
 import (
-	"fmt"
-
 	"github.com/cohix/simplcrypto"
 	log "github.com/cohix/simplog"
 	"github.com/pkg/errors"
@@ -24,38 +22,60 @@ func (m *Manager) RunPartnerManagerWithServer(server partner.PartnerService_Stre
 // PartnerUpdateFunc gets the update func for the partner manager
 func (m *Manager) PartnerUpdateFunc() func(update.PartnerUpdate) {
 	return func(update update.PartnerUpdate) {
-		if err := m.updateTasksFromPartner(update.Tasks); err != nil {
+		if err := m.addTasksFromPartner(update.Tasks); err != nil {
 			log.LogError(errors.Wrap(err, "PartnerUpdateFunc failed to updateTasksFromPartner"))
 		}
 	}
 }
 
-func (m *Manager) updateTasksFromPartner(tasks []model.Task) error {
+func (m *Manager) addTasksFromPartner(tasks []model.Task) error {
 	errs := []error{}
 
-	for i, t := range tasks {
-		canSchedule := true
-
+	for _, t := range tasks {
 		if err := m.storage.Add(t); err != nil {
-			log.LogInfo(fmt.Sprintf("task %s from partner already exists, will update", t.UUID))
-
-			if err := m.storage.Update(t); err != nil {
-				errs = append(errs, errors.Wrap(err, "failed to update task"))
-				canSchedule = false
-			}
+			errs = append(errs, errors.Wrapf(err, "failed to Add to storage for task %s", t.UUID))
 		}
 
-		// if we own it, schedule it
-		if canSchedule && t.Meta.PartnerUUID == m.partnerManager.UUID {
-			if t.IsNotStarted() {
-				m.scheduler.ScheduleTask(&tasks[i])
-			} else {
-				log.LogWarn("received task from partner owned by self, but is started")
+		// only schedule the task if we own it
+		if m.isOurTask(&t) {
+			update := t.BuildUpdate(model.TaskChanges{Status: model.TaskStatusWaiting})
+
+			updatedTask, err := m.updater.UpdateTask(update)
+			if err != nil {
+				errs = append(errs, errors.Wrap(err, "failed to updater.UpdateTask"))
 			}
+
+			go m.scheduler.ScheduleTask(updatedTask)
 		}
 	}
 
+	if err := combinedErr(errs); err != nil {
+		return errors.Wrap(err, "encountered errors adding tasks")
+	}
+
+	return nil
+}
+
+func (m *Manager) updateTasksFromPartner(updates []model.TaskUpdate) error {
+	errs := []error{}
+
+	for _, u := range updates {
+		_, err := m.UpdateTask(&u)
+		if err != nil {
+			errs = append(errs, errors.Wrap(err, "failed to UpdateTask"))
+		}
+	}
+
+	if err := combinedErr(errs); err != nil {
+		return errors.Wrap(err, "encountered errors updating tasks")
+	}
+
+	return nil
+}
+
+func combinedErr(errs []error) error {
 	var combinedErr error
+
 	if len(errs) > 0 {
 		combinedErrString := ""
 
@@ -66,9 +86,5 @@ func (m *Manager) updateTasksFromPartner(tasks []model.Task) error {
 		combinedErr = errors.New(combinedErrString)
 	}
 
-	if combinedErr != nil {
-		return errors.Wrap(combinedErr, "encountered errors updating tasks")
-	}
-
-	return nil
+	return combinedErr
 }

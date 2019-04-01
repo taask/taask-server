@@ -38,74 +38,84 @@ const (
 	TaskStatusRetrying = "retrying"
 )
 
-// Update applies an update to a task object and returns the update with the updated version number
-func (t *Task) Update(u TaskUpdate) (TaskUpdate, error) {
-	u.UUID = t.UUID
-	u.Version = t.Meta.Version + 1
-
-	if err := t.ApplyUpdate(u, false); err != nil {
-		return TaskUpdate{}, errors.Wrap(err, "failed to ApplyUpdate")
+// BuildUpdate applies an update to a task object and returns the update with the updated version number
+func (t *Task) BuildUpdate(c TaskChanges) *TaskUpdate {
+	update := &TaskUpdate{
+		UUID:    t.UUID,
+		Version: t.Meta.Version + 1,
+		Changes: &c,
 	}
 
-	return u, nil
+	return update
 }
 
-// ApplyUpdate applies an update to a task
-func (t *Task) ApplyUpdate(update TaskUpdate, logIt bool) error {
+// CheckUpdate checks a task update to see if it's allowed
+func (t *Task) CheckUpdate(update *TaskUpdate) error {
 	if update.Version == t.Meta.Version+1 {
-		t.Meta.Version = update.Version
+		// cool
 	} else {
 		return fmt.Errorf("tried to apply update with version %d, task %s has version %d", update.Version, t.UUID, t.Meta.Version)
 	}
 
-	if update.EncResult != nil {
-		t.EncResult = update.EncResult
-	}
-
-	if update.Status != "" && t.Status != update.Status {
-		if t.CanTransitionToState(update.Status) {
-			if logIt {
-				log.LogInfo(fmt.Sprintf("task %s status updated (%s -> %s)", t.UUID, t.Status, update.Status))
-			}
-			t.Status = update.Status
+	if update.Changes.Status != "" && t.Status != update.Changes.Status {
+		if t.CanTransitionToState(update.Changes.Status) {
+			// cool
 		} else {
-			return fmt.Errorf("task %s tried to transition from %s to %s, throwing update away", t.UUID, t.Status, update.Status)
+			return fmt.Errorf("task %s tried to transition from %s to %s, throwing update away", t.UUID, t.Status, update.Changes.Status)
 		}
-	}
-
-	if update.RunnerUUID != "" && t.Meta.RunnerUUID != update.RunnerUUID {
-		if logIt {
-			log.LogInfo(fmt.Sprintf("task %s assigned to runner %s", t.UUID, update.RunnerUUID))
-		}
-		t.Meta.RunnerUUID = update.RunnerUUID
-	}
-
-	if len(update.AddedEncTaskKeys) > 0 {
-		for i := range update.AddedEncTaskKeys {
-			if logIt {
-				log.LogInfo(fmt.Sprintf("task %s added task key encrypted with KID %s", t.UUID, update.AddedEncTaskKeys[i].KID))
-			}
-
-			t.AddEncTaskKey(update.AddedEncTaskKeys[i])
-		}
-	}
-
-	if update.RetrySeconds != 0 && t.Meta.RetrySeconds != update.RetrySeconds {
-		if logIt {
-			log.LogInfo(fmt.Sprintf("task %s set to retry in %d seconds", t.UUID, update.RetrySeconds))
-		}
-		t.Meta.RetrySeconds = update.RetrySeconds
-	}
-
-	if update.PartnerUUID != "" && t.Meta.PartnerUUID != update.PartnerUUID {
-		if logIt {
-			log.LogInfo(fmt.Sprintf("task %s assigned to partner %s", t.UUID, update.PartnerUUID))
-		}
-
-		t.Meta.PartnerUUID = update.PartnerUUID
 	}
 
 	return nil
+}
+
+// ApplyUpdateToTask applies an update to a task and returns the updated task
+func ApplyUpdateToTask(task *Task, update *TaskUpdate) (*Task, error) {
+	// make a copy
+	t := *task
+
+	if update.Version == t.Meta.Version+1 {
+		t.Meta.Version = update.Version
+	} else {
+		return nil, fmt.Errorf("tried to apply update with version %d, task %s has version %d", update.Version, t.UUID, t.Meta.Version)
+	}
+
+	if update.Changes.Status != "" && t.Status != update.Changes.Status {
+		if t.CanTransitionToState(update.Changes.Status) {
+			log.LogInfo(fmt.Sprintf("task %s status updated (%s -> %s)", t.UUID, t.Status, update.Changes.Status))
+			t.Status = update.Changes.Status
+		} else {
+			return nil, fmt.Errorf("task %s tried to transition from %s to %s, throwing update away", t.UUID, t.Status, update.Changes.Status)
+		}
+	}
+
+	if update.Changes.EncResult != nil {
+		t.EncResult = update.Changes.EncResult
+	}
+
+	if update.Changes.RunnerUUID != "" && t.Meta.RunnerUUID != update.Changes.RunnerUUID {
+		log.LogInfo(fmt.Sprintf("task %s assigned to runner %s", t.UUID, update.Changes.RunnerUUID))
+		t.Meta.RunnerUUID = update.Changes.RunnerUUID
+	}
+
+	if len(update.Changes.AddedEncTaskKeys) > 0 {
+		for i := range update.Changes.AddedEncTaskKeys {
+			log.LogInfo(fmt.Sprintf("task %s added task key encrypted with KID %s", t.UUID, update.Changes.AddedEncTaskKeys[i].KID))
+
+			t.AddEncTaskKey(update.Changes.AddedEncTaskKeys[i])
+		}
+	}
+
+	if update.Changes.RetrySeconds != 0 && t.Meta.RetrySeconds != update.Changes.RetrySeconds {
+		log.LogInfo(fmt.Sprintf("task %s set to retry in %d seconds", t.UUID, update.Changes.RetrySeconds))
+		t.Meta.RetrySeconds = update.Changes.RetrySeconds
+	}
+
+	if update.Changes.PartnerUUID != "" && t.Meta.PartnerUUID != update.Changes.PartnerUUID {
+		log.LogInfo(fmt.Sprintf("task %s assigned to partner %s", t.UUID, update.Changes.PartnerUUID))
+		t.Meta.PartnerUUID = update.Changes.PartnerUUID
+	}
+
+	return nil, nil
 }
 
 // AddEncTaskKey adds an encrypted task key to the task meta

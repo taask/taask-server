@@ -7,7 +7,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/taask/taask-server/auth"
 	"github.com/taask/taask-server/brain"
-	model "github.com/taask/taask-server/model"
 	context "golang.org/x/net/context"
 	grpc "google.golang.org/grpc"
 )
@@ -92,20 +91,10 @@ func (ts TaskService) CheckTask(req *CheckTaskRequest, stream TaskService_CheckT
 		if task.Status != status {
 			status = task.Status
 
-			// TODO: make this more comprehensive
-			update := &model.TaskUpdate{
-				UUID:   task.UUID,
-				Status: task.Status,
-			}
-
-			if task.EncResult != nil {
-				update.EncResult = task.EncResult
-			}
-
 			resp := &CheckTaskResponse{
 				Status:     task.Status,
 				EncTaskKey: task.GetEncTaskKey(task.Meta.ClientKeyKID),
-				Result:     update,
+				Result:     task.EncResult,
 			}
 
 			if err := stream.Send(resp); err != nil {

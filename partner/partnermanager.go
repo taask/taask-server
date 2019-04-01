@@ -136,6 +136,25 @@ func (m *Manager) HealthyPartner() (string, *simplcrypto.KeyPair) {
 	return "", nil
 }
 
+// HasHealthyPartner returns a UUID and pubkey of a healthy partner
+func (m *Manager) HasHealthyPartner() bool {
+	if m == nil {
+		return false
+	}
+
+	if m.partner == nil {
+		return false
+	}
+
+	if m.partner.HealthChecker != nil {
+		if m.partner.HealthChecker.IsHealthy {
+			return true
+		}
+	}
+
+	return false
+}
+
 func (m *Manager) handleUpdates(sendChan, recvChan chan update.PartnerUpdate, unhealthyChan chan error) error {
 	// the inner loop does partner sync (flushes the queued updates, receives updates)
 	timeChan := make(chan bool, 1)

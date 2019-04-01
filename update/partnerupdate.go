@@ -9,9 +9,10 @@ import (
 
 // PartnerUpdate represents a sync between two partners
 type PartnerUpdate struct {
-	Tasks    []model.Task
-	Groups   []auth.MemberGroup
-	Sessions []auth.MemberAuth
+	Tasks       []model.Task
+	TaskUpdates []model.TaskUpdate
+	Groups      []auth.MemberGroup
+	Sessions    []auth.MemberAuth
 
 	// we need to lock the update itself to protect against multiple goroutines
 	lock *sync.Mutex
@@ -33,14 +34,14 @@ func NewPartnerUpdate() *PartnerUpdate {
 func (u *PartnerUpdate) AddTask(task model.Task) {
 	defer u.lockUnlock()()
 
-	for i, t := range u.Tasks {
-		if t.UUID == task.UUID {
-			u.Tasks[i] = task
-			return
-		}
-	}
-
 	u.Tasks = append(u.Tasks, task)
+}
+
+// AddTaskUpdate adds a task update to be applied
+func (u *PartnerUpdate) AddTaskUpdate(update *model.TaskUpdate) {
+	defer u.lockUnlock()()
+
+	u.TaskUpdates = append(u.TaskUpdates, *update)
 }
 
 // AddGroup adds a member group to be updated
