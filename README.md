@@ -1,3 +1,5 @@
+🔺 Taask is being replaced (slowly) by [Hive](https://github.com/suborbital/hive) and is now deprecated. 🔺
+
 ![Logo](https://user-images.githubusercontent.com/5942370/50045447-d14f3400-0060-11e9-8e98-78cfdcf85a75.png)
 
 # Taask Core
